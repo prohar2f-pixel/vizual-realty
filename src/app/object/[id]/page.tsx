@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { AgentCard } from "@/components/AgentCard";
+import { LeadForm } from "@/components/LeadForm";
 
 async function getProperty(id: string) {
   return db.property.findUnique({ where: { id }, include: { agent: true } });
@@ -81,10 +82,11 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
             <p className="mt-4 whitespace-pre-line text-stone-700">{p.description}</p>
           )}
         </div>
-        <div>
+        <div className="space-y-4">
           {p.agent && (
             <AgentCard name={p.agent.name} phone={p.agent.phone} photoUrl={p.agent.photoUrl} />
           )}
+          <LeadForm objectShortId={p.shortId} objectType={p.objectType} />
         </div>
       </div>
     </main>

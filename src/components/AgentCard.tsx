@@ -17,10 +17,6 @@ export function AgentCard({ name, phone, photoUrl }: Props) {
           Позвонить
         </a>
       )}
-      {/* Кнопка «Написать» станет рабочей на этапе 4 (форма заявки → Topnlab) */}
-      <button className="mt-2 block w-full rounded-md border border-brand px-4 py-2 font-medium text-brand transition hover:bg-cream">
-        Написать
-      </button>
     </div>
   );
 }
