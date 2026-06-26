@@ -26,7 +26,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-stone-800">Каталог объектов</h1>
+      <h1 className="mb-6 font-display text-3xl font-bold text-brand">Каталог объектов</h1>
       <CatalogFilters districts={districts} current={sp} />
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-stone-300 p-10 text-center text-stone-500">

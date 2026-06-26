@@ -29,11 +29,11 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <a href="/catalog" className="text-sm text-emerald-700 hover:underline">
+      <a href="/catalog" className="text-sm text-gold-deep hover:underline">
         ← к каталогу
       </a>
-      <h1 className="mt-3 text-2xl font-bold text-stone-800">{p.title}</h1>
-      <div className="mt-1 text-2xl font-semibold text-emerald-800">{formatPrice(p.price)}</div>
+      <h1 className="mt-3 font-display text-3xl font-bold text-brand">{p.title}</h1>
+      <div className="mt-1 font-display text-2xl font-bold text-brand">{formatPrice(p.price)}</div>
 
       {p.photos.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">

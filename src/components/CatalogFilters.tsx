@@ -50,7 +50,7 @@ export function CatalogFilters({ districts, current }: Props) {
       </label>
       <button
         type="submit"
-        className="rounded-md bg-emerald-700 px-5 py-2 font-medium text-white hover:bg-emerald-800"
+        className="rounded-md bg-brand px-5 py-2 font-medium text-cream transition hover:bg-brand-dark"
       >
         Показать
       </button>
