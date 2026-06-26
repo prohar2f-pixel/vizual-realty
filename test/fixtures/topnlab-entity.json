@@ -1,0 +1,16 @@
+{
+  "id": "1233",
+  "short_id": 53020,
+  "deal": "sale",
+  "object_type": "flat",
+  "title": "2-комн. квартира, ул. Артёма 15",
+  "price": 4500000,
+  "rooms": 2,
+  "area": 54.3,
+  "district": "Центр",
+  "address": "ул. Артёма, 15",
+  "description": "Светлая квартира с ремонтом",
+  "photos": ["https://cdn.topnlab.ru/1.jpg", "https://cdn.topnlab.ru/2.jpg"],
+  "is_feed": true,
+  "agent": { "id": "77", "name": "Ольга Петрова", "phone": "79991112233", "photo": "https://cdn.topnlab.ru/agent77.jpg" }
+}
