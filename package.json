@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sync": "tsx scripts/sync.ts",
+    "seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
