@@ -7,7 +7,7 @@ export function CatalogFilters({ districts, current }: Props) {
   return (
     <form
       method="get"
-      className="mb-6 flex flex-wrap items-end gap-4 rounded-xl border border-stone-200 bg-white p-4"
+      className="mb-6 flex flex-col gap-3 rounded-xl border border-stone-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4"
     >
       <label className="flex flex-col text-sm">
         <span className="mb-1 text-stone-600">Комнат</span>
@@ -50,7 +50,7 @@ export function CatalogFilters({ districts, current }: Props) {
       </label>
       <button
         type="submit"
-        className="rounded-md bg-brand px-5 py-2 font-medium text-cream transition hover:bg-brand-dark"
+        className="rounded-md bg-brand px-5 py-2 font-medium text-on-brand transition hover:bg-brand-dim"
       >
         Показать
       </button>

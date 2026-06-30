@@ -9,7 +9,7 @@ export default async function TeamPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <h1 className="font-display text-3xl font-bold text-brand">Наша команда</h1>
-      <p className="mt-2 text-ink/70">Агенты, которые помогут с подбором и сделкой.</p>
+      <p className="mt-2 text-text/70">Агенты, которые помогут с подбором и сделкой.</p>
 
       {agents.length > 0 ? (
         <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
@@ -26,11 +26,11 @@ export default async function TeamPage() {
                   className="mx-auto h-28 w-28 rounded-full object-cover"
                 />
               )}
-              <div className="mt-3 font-semibold text-ink">{a.name}</div>
+              <div className="mt-3 font-semibold text-text">{a.name}</div>
               {a.phone && (
                 <a
                   href={`tel:${a.phone}`}
-                  className="mt-1 block text-sm text-gold-deep hover:underline"
+                  className="mt-1 block text-sm text-accent-text hover:underline"
                 >
                   {a.phone}
                 </a>

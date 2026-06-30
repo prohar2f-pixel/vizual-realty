@@ -1,21 +1,54 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand: #0e5a43;
-  --color-brand-dark: #0a4634;
-  --color-brand-light: #157a5c;
-  --color-gold: #d4a437;
-  --color-gold-soft: #f0d582;
-  --color-gold-deep: #b07e1e;
-  --color-cream: #f4f1e9;
-  --color-ink: #14241e;
+  --color-brand:       #0e5a43;
+  --color-brand-dim:   #083426;
+  --color-accent:      #c8911f;
+  --color-accent-text: #7d5f18;
+  --color-bg:          #f8f6f1;
+  --color-surface:     #ffffff;
+  --color-text:        #1c1c1c;
+  --color-muted:       #6b6b6b;
+  --color-on-brand:    #ede9e0;
 
-  --font-display: var(--font-playfair), Georgia, serif;
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-cormorant), "Garamond", Georgia, serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
 }
 
 body {
   font-family: var(--font-sans);
-  background: #ffffff;
-  color: var(--color-ink);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Плавающие белые линии в геро-блоке: линия течёт вбок на одну ячейку рисунка. */
+@keyframes vz-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-720px);
+  }
+}
+
+.vz-line {
+  animation-name: vz-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes vz-node-pulse {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.7; }
+}
+
+.vz-node {
+  animation: vz-node-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vz-line,
+  .vz-node {
+    animation: none;
+  }
 }

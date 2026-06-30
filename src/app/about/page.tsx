@@ -4,7 +4,7 @@ export default function AboutPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="font-display text-3xl font-bold text-brand">О компании</h1>
-      <div className="mt-6 space-y-4 text-ink/80">
+      <div className="mt-6 space-y-4 text-text/80">
         <p>
           Агентство недвижимости «Визуал» помогает людям покупать и продавать жильё —
           квартиры и частные дома. Мы ценим доверие и сопровождаем каждую сделку от

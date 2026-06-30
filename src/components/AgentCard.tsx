@@ -7,12 +7,12 @@ export function AgentCard({ name, phone, photoUrl }: Props) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={photoUrl} alt={name} className="mx-auto h-24 w-24 rounded-full object-cover" />
       )}
-      <div className="mt-3 font-semibold text-ink">{name}</div>
+      <div className="mt-3 font-semibold text-text">{name}</div>
       <div className="mt-1 text-sm text-stone-500">Ваш агент</div>
       {phone && (
         <a
           href={`tel:${phone}`}
-          className="mt-4 block rounded-md bg-brand px-4 py-2 font-medium text-cream transition hover:bg-brand-dark"
+          className="mt-4 block rounded-md bg-brand px-4 py-2 font-medium text-on-brand transition hover:bg-brand-dim"
         >
           Позвонить
         </a>

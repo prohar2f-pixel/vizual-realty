@@ -6,7 +6,7 @@ export default function ContactsPage() {
       <h1 className="font-display text-3xl font-bold text-brand">Контакты</h1>
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
         <div className="rounded-xl border border-stone-200 bg-white p-6">
-          <dl className="space-y-3 text-ink/80">
+          <dl className="space-y-3 text-text/80">
             <div>
               <dt className="text-sm text-stone-500">Телефон</dt>
               <dd className="font-medium">______________</dd>
@@ -28,7 +28,7 @@ export default function ContactsPage() {
             (Контакты — заглушки. Пришлите телефон, e-mail и адрес офиса — поставлю.)
           </p>
         </div>
-        <div className="flex items-center justify-center rounded-xl border border-dashed border-stone-300 bg-cream p-6 text-center text-stone-400">
+        <div className="flex items-center justify-center rounded-xl border border-dashed border-stone-300 bg-bg p-6 text-center text-stone-400">
           Здесь будет карта проезда
         </div>
       </div>

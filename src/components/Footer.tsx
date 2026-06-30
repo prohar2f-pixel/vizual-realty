@@ -1,26 +1,26 @@
 export function Footer() {
   return (
-    <footer className="bg-brand-dark text-cream/80">
+    <footer className="bg-brand-dim text-on-brand/80">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">
         <div>
-          <div className="font-display text-xl font-bold text-cream">
-            ВИ<span className="text-gold">З</span>УАЛ
+          <div className="font-display text-xl font-bold text-on-brand">
+            ВИ<span className="text-accent">З</span>УАЛ
           </div>
           <p className="mt-2 text-sm">
             Агентство недвижимости. Продажа квартир и домов.
           </p>
         </div>
         <div>
-          <div className="mb-3 font-semibold text-cream">Разделы</div>
+          <div className="mb-3 font-semibold text-on-brand">Разделы</div>
           <ul className="space-y-2 text-sm">
-            <li><a href="/catalog" className="transition hover:text-gold">Каталог</a></li>
-            <li><a href="/about" className="transition hover:text-gold">О нас</a></li>
-            <li><a href="/team" className="transition hover:text-gold">Команда</a></li>
-            <li><a href="/contacts" className="transition hover:text-gold">Контакты</a></li>
+            <li><a href="/catalog" className="transition hover:text-accent">Каталог</a></li>
+            <li><a href="/about" className="transition hover:text-accent">О нас</a></li>
+            <li><a href="/team" className="transition hover:text-accent">Команда</a></li>
+            <li><a href="/contacts" className="transition hover:text-accent">Контакты</a></li>
           </ul>
         </div>
         <div>
-          <div className="mb-3 font-semibold text-cream">Контакты</div>
+          <div className="mb-3 font-semibold text-on-brand">Контакты</div>
           <p className="text-sm leading-relaxed">
             Телефон: ______________
             <br />
@@ -30,7 +30,7 @@ export function Footer() {
           </p>
         </div>
       </div>
-      <div className="border-t border-cream/10 py-4 text-center text-xs text-cream/50">
+      <div className="border-t border-on-brand/10 py-4 text-center text-xs text-on-brand/50">
         © {new Date().getFullYear()} Агентство недвижимости «Визуал»
       </div>
     </footer>

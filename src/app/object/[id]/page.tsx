@@ -30,7 +30,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <a href="/catalog" className="text-sm text-gold-deep hover:underline">
+      <a href="/catalog" className="text-sm text-accent-text hover:underline">
         ← к каталогу
       </a>
       <h1 className="mt-3 font-display text-3xl font-bold text-brand">{p.title}</h1>

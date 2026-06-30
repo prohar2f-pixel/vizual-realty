@@ -35,16 +35,16 @@ export function LeadForm({ objectShortId, objectType }: Props) {
 
   if (status === "ok") {
     return (
-      <div className="rounded-xl border border-brand/30 bg-cream p-5 text-center">
+      <div className="rounded-xl border border-brand/30 bg-bg p-5 text-center">
         <p className="font-semibold text-brand">Спасибо! Заявка отправлена.</p>
-        <p className="mt-1 text-sm text-ink/70">Агент свяжется с вами в ближайшее время.</p>
+        <p className="mt-1 text-sm text-text/70">Агент свяжется с вами в ближайшее время.</p>
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="rounded-xl border border-stone-200 bg-white p-5">
-      <div className="font-semibold text-ink">Написать агенту</div>
+      <div className="font-semibold text-text">Написать агенту</div>
       <input
         name="fullname"
         required
@@ -66,7 +66,7 @@ export function LeadForm({ objectShortId, objectType }: Props) {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-3 w-full rounded-md bg-brand px-4 py-2 font-medium text-cream transition hover:bg-brand-dark disabled:opacity-60"
+        className="mt-3 w-full rounded-md bg-brand px-4 py-2 font-medium text-on-brand transition hover:bg-brand-dim disabled:opacity-60"
       >
         {status === "sending" ? "Отправляем…" : "Отправить заявку"}
       </button>
