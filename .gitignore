@@ -43,6 +43,9 @@ start.err
 # vercel
 .vercel
 
+# local worktrees for isolated preview work
+/.worktrees/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
