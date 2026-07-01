@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { MobileNav } from "./MobileNav";
 
@@ -13,13 +14,21 @@ export function Header() {
   return (
     <header className="relative sticky top-0 z-50 border-b border-black/10 bg-brand text-on-brand">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <Link href="/" className="flex items-baseline gap-2">
-          <span className="font-display text-2xl font-bold tracking-wide">
-            ВИ<span className="text-accent">З</span>УАЛ
-          </span>
-          <span className="hidden text-[10px] uppercase tracking-[0.25em] text-on-brand/70 sm:inline">
-            агентство недвижимости
-          </span>
+        <Link
+          href="/"
+          aria-label="Визуал — агентство недвижимости, на главную"
+          className="flex items-center rounded focus:outline-2 focus:outline-offset-2 focus:outline-on-brand"
+        >
+          <Image
+            src="/brand/logo-wordmark-light.svg"
+            alt="Визуал — агентство недвижимости"
+            width={516}
+            height={274}
+            priority
+            unoptimized
+            sizes="(max-width: 640px) 36px, 40px"
+            className="h-9 w-auto sm:h-10 aspect-[516/274]"
+          />
         </Link>
 
         <nav className="hidden sm:flex items-center gap-1">
