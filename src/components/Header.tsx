@@ -17,7 +17,7 @@ export function Header() {
         <Link
           href="/"
           aria-label="Визуал — агентство недвижимости, на главную"
-          className="flex items-center"
+          className="flex items-center rounded focus:outline-2 focus:outline-offset-2 focus:outline-on-brand"
         >
           <Image
             src="/brand/logo-wordmark-light.svg"
@@ -26,7 +26,8 @@ export function Header() {
             height={274}
             priority
             unoptimized
-            className="h-9 w-auto sm:h-10"
+            sizes="(max-width: 640px) 36px, 40px"
+            className="h-9 w-auto sm:h-10 aspect-[516/274]"
           />
         </Link>
 

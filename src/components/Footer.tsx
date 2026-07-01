@@ -11,7 +11,7 @@ export function Footer() {
             width={516}
             height={294}
             unoptimized
-            className="h-14 w-auto"
+            className="h-14 w-auto aspect-[516/294]"
           />
           <p className="mt-3 text-sm">
             Продажа квартир и домов.
