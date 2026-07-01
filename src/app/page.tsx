@@ -33,8 +33,8 @@ export default async function Home() {
         <AnimatedLines />
         <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pt-16 pb-14 sm:pt-36 sm:pb-28">
           <div className="max-w-lg">
-            <p className="mb-4 flex items-center gap-2.5 text-sm uppercase tracking-[0.3em] text-accent">
-              <span className="h-1.5 w-1.5 flex-none rounded-full bg-accent" />
+            <p className="mb-4 flex items-center gap-2.5 text-sm uppercase tracking-[0.3em] text-accent-bright">
+              <span className="h-1.5 w-1.5 flex-none rounded-full bg-accent-bright" />
               агентство недвижимости
             </p>
             <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-[-0.025em] sm:text-5xl">
@@ -65,8 +65,11 @@ export default async function Home() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-2">
           <h2 className="font-display text-3xl font-bold tracking-[-0.02em] text-brand">Избранные объекты</h2>
-          <Link href="/catalog" className="text-sm font-medium text-accent-text hover:underline">
-            весь каталог →
+          <Link href="/catalog" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-text hover:underline">
+            весь каталог
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </Link>
         </div>
         {featured.length > 0 ? (
@@ -125,20 +128,23 @@ export default async function Home() {
             </ul>
             <Link
               href="/about"
-              className="mt-8 inline-block text-sm font-medium text-accent-text hover:underline"
+              className="mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-accent-text hover:underline"
             >
-              Подробнее о компании →
+              Подробнее о компании
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
             </Link>
           </div>
           <div className="flex flex-col justify-between rounded-2xl bg-brand p-8 text-on-brand sm:p-10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-on-brand/40">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-on-brand-soft">
               агентство недвижимости
             </p>
             <div>
-              <div className="font-display text-[6rem] font-bold leading-none text-accent sm:text-[7rem]">
+              <div className="font-display text-[6rem] font-bold leading-none text-accent-bright sm:text-[7rem]">
                 200+
               </div>
-              <p className="mt-3 text-sm tracking-wide text-on-brand/60">
+              <p className="mt-3 text-sm tracking-wide text-on-brand-soft">
                 активных объектов в продаже
               </p>
             </div>

@@ -28,12 +28,17 @@ export function PropertyCard({ id, title, price, rooms, area, district, photo }:
         ) : (
           <div className="flex h-full items-center justify-center text-stone-400">нет фото</div>
         )}
-        <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md border border-white/50 bg-white/10 text-sm text-white backdrop-blur-sm">
-          ↗
+        <span
+          aria-hidden="true"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md border border-white/50 bg-white/10 text-white backdrop-blur-sm"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 17 17 7M7 7h10v10" />
+          </svg>
         </span>
       </div>
       <div className="p-4">
-        <div className="font-display text-xl font-bold text-accent">{formatPrice(price)}</div>
+        <div className="font-display text-xl font-bold text-accent-text">{formatPrice(price)}</div>
         <div className="mt-1 line-clamp-1 font-display font-medium text-text">{title}</div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-500">
           {rooms != null && <span>{rooms} комн.</span>}

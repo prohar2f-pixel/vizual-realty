@@ -45,24 +45,35 @@ export function LeadForm({ objectShortId, objectType }: Props) {
   return (
     <form onSubmit={onSubmit} className="rounded-xl border border-stone-200 bg-white p-5">
       <div className="font-semibold text-text">Написать агенту</div>
-      <input
-        name="fullname"
-        required
-        placeholder="Ваше имя"
-        className="mt-3 w-full rounded-md border border-stone-300 px-3 py-2"
-      />
-      <input
-        name="phone"
-        required
-        placeholder="Телефон или e-mail"
-        className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2"
-      />
-      <textarea
-        name="comment"
-        rows={3}
-        placeholder="Сообщение (необязательно)"
-        className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2"
-      />
+      <label htmlFor="lead-fullname" className="mt-3 block text-sm text-stone-600">
+        Ваше имя
+        <input
+          id="lead-fullname"
+          name="fullname"
+          required
+          placeholder="Иван Иванов"
+          className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-text"
+        />
+      </label>
+      <label htmlFor="lead-phone" className="mt-2 block text-sm text-stone-600">
+        Телефон или e-mail
+        <input
+          id="lead-phone"
+          name="phone"
+          required
+          placeholder="+7 900 000-00-00"
+          className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-text"
+        />
+      </label>
+      <label htmlFor="lead-comment" className="mt-2 block text-sm text-stone-600">
+        Сообщение (необязательно)
+        <textarea
+          id="lead-comment"
+          name="comment"
+          rows={3}
+          className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-text"
+        />
+      </label>
       <button
         type="submit"
         disabled={status === "sending"}
