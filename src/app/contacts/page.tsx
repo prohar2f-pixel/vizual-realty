@@ -17,7 +17,7 @@ export default function ContactsPage() {
             </div>
             <div>
               <dt className="text-sm text-stone-500">Адрес офиса</dt>
-              <dd className="font-medium">______________</dd>
+              <dd className="font-medium">г. Донецк, ул. 50 лет СССР, 142</dd>
             </div>
             <div>
               <dt className="text-sm text-stone-500">Режим работы</dt>
