@@ -1,5 +1,4 @@
 {
-  "projectName": "vizual-realty",
   "framework": "nextjs",
   "buildCommand": "next build",
   "outputDirectory": ".next",
