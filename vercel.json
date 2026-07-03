@@ -1,11 +1,5 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "outputDirectory": ".next",
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "TOPNLAB_KEY": "@topnlab_key",
-    "TOPNLAB_BASE_URL": "https://agencies-p.topnlab.ru",
-    "SITE_URL": "@site_url"
-  }
+  "outputDirectory": ".next"
 }
