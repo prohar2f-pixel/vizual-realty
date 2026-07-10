@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Agent {
+  id         String     @id
+  name       String
+  phone      String?
+  photoUrl   String?
+  properties Property[]
+}
+
+model Property {
+  id          String   @id
+  shortId     Int?
+  deal        String
+  objectType  String
+  title       String
+  price       Int
+  rooms       Int?
+  area        Float?
+  district    String?
+  address     String?
+  description String?
+  photos      String[]
+  isFeed      Boolean  @default(true)
+  agent       Agent?   @relation(fields: [agentId], references: [id])
+  agentId     String?
+  updatedAt   DateTime @updatedAt
+}
