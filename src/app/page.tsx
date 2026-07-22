@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
 import { PropertyCard } from "@/components/PropertyCard";
-import { AnimatedLines } from "@/components/AnimatedLines";
 
 export const dynamic = "force-dynamic";
 
@@ -16,34 +15,29 @@ export default async function Home() {
   return (
     <main>
       {/* Геро */}
-      <section className="relative flex min-h-[70vh] flex-col justify-start overflow-hidden bg-brand text-on-brand">
+      <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-brand text-on-brand">
         <Image
-          src="/hero-bg.png"
-          alt=""
+          src="/team-hero.jpeg"
+          alt="Команда агентства недвижимости «Визуал»"
           fill
           priority
-          quality={90}
-          className="object-cover object-right"
+          unoptimized
+          sizes="100vw"
+          className="object-cover object-center"
         />
-        {/* mobile: сплошной оверлей; desktop: градиент, здание видно справа */}
-        <div className="absolute inset-0 bg-brand/85 sm:hidden" />
-        <div className="absolute inset-0 hidden sm:block bg-gradient-to-r from-brand/90 via-brand/70 to-brand/40" />
-        {/* снизу заглушаем оранжевый закат */}
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-brand to-transparent" />
-        <AnimatedLines />
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pt-16 pb-14 sm:pt-36 sm:pb-28">
-          <div className="max-w-lg">
-            <p className="mb-4 flex items-center gap-2.5 text-sm uppercase tracking-[0.3em] text-accent-bright">
-              <span className="h-1.5 w-1.5 flex-none rounded-full bg-accent-bright" />
-              агентство недвижимости
-            </p>
-            <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-[-0.025em] sm:text-5xl">
-              Найдём дом, в который хочется возвращаться
-            </h1>
-            <p className="mt-5 text-lg text-on-brand/75">
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-brand/75 via-brand/30 to-transparent sm:h-52" />
+        <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-brand/95 via-brand/55 to-transparent sm:h-64" />
+
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-73px)] w-full max-w-[1600px] flex-col justify-between px-4 py-8 sm:px-8 sm:py-10">
+          <h1 className="-translate-y-3 text-center font-display text-4xl font-semibold leading-none tracking-[-0.025em] drop-shadow-lg sm:-translate-y-5 sm:text-6xl lg:text-7xl">
+            Недвижимость в Донецке
+          </h1>
+
+          <div className="text-center drop-shadow-md">
+            <p className="mx-auto text-base font-medium text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
               Продажа квартир и домов. Большой каталог проверенных объектов и личный агент на каждом этапе сделки.
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
+            <div className="mt-5 flex flex-wrap justify-center gap-3 sm:gap-4">
               <Link
                 href="/catalog"
                 className="rounded-md bg-gradient-to-r from-accent to-[#e8b84d] px-8 py-4 text-base font-semibold text-text transition hover:brightness-95"
