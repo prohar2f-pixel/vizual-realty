@@ -14,19 +14,25 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   if (sp.priceMax) where.price = { lte: Number(sp.priceMax) };
   if (sp.district) where.district = sp.district;
 
-  const [items, districtRows] = await Promise.all([
+  const [items, districtRows, totalItems] = await Promise.all([
     db.property.findMany({ where, orderBy: { updatedAt: "desc" } }),
     db.property.findMany({
       where: { isFeed: true, district: { not: null } },
       select: { district: true },
       distinct: ["district"],
     }),
+    db.property.count({ where: { isFeed: true } }),
   ]);
   const districts = districtRows.map((r) => r.district!).sort();
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 font-display text-3xl font-bold text-brand">Каталог объектов</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-display text-3xl font-bold text-brand">Каталог объектов</h1>
+        <p className="rounded-full bg-brand/10 px-4 py-2 text-sm font-semibold text-brand">
+          В каталоге: {totalItems} объектов
+        </p>
+      </div>
       <CatalogFilters districts={districts} current={sp} />
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
