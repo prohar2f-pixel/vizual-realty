@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  extractTopnlabDistrict,
   formatTopnlabAddress,
   normalizePropertyDescription,
 } from "../src/lib/property-content";
@@ -42,6 +43,34 @@ describe("normalizePropertyDescription", () => {
 });
 
 describe("formatTopnlabAddress", () => {
+  test("adds readable prefixes to plain structured address parts", () => {
+    expect(
+      formatTopnlabAddress({
+        region: "Донецкая Народная Республика",
+        city: "Донецк",
+        city_district: "Пролетарский",
+        street: "Раздольная",
+        house: "26",
+      }),
+    ).toBe(
+      "Донецкая Народная Республика, г. Донецк, Пролетарский р-н, ул. Раздольная, д. 26",
+    );
+  });
+
+  test("expands the shortened Donetsk People's Republic region name", () => {
+    expect(
+      formatTopnlabAddress({
+        region: "Донецкая Народная",
+        city: "Донецк",
+        city_district: "Пролетарский",
+        street: "Раздольная",
+        house: "26",
+      }),
+    ).toBe(
+      "Донецкая Народная Республика, г. Донецк, Пролетарский р-н, ул. Раздольная, д. 26",
+    );
+  });
+
   test("builds the CRM address from structured components", () => {
     expect(
       formatTopnlabAddress({
@@ -53,7 +82,7 @@ describe("formatTopnlabAddress", () => {
         address: "\u0420\u0430\u0437\u0434\u043e\u043b\u044c\u043d\u0430\u044f \u0443\u043b., 26",
       }),
     ).toBe(
-      "\u0414\u043e\u043d\u0435\u0446\u043a\u0430\u044f \u041d\u0430\u0440\u043e\u0434\u043d\u0430\u044f \u0420\u0435\u0441\u043f., \u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u041f\u0440\u043e\u043b\u0435\u0442\u0430\u0440\u0441\u043a\u0438\u0439 \u0440-\u043d, \u0443\u043b. \u0420\u0430\u0437\u0434\u043e\u043b\u044c\u043d\u0430\u044f, \u0434. 26",
+      "\u0414\u043e\u043d\u0435\u0446\u043a\u0430\u044f \u041d\u0430\u0440\u043e\u0434\u043d\u0430\u044f \u0420\u0435\u0441\u043f\u0443\u0431\u043b\u0438\u043a\u0430, \u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u041f\u0440\u043e\u043b\u0435\u0442\u0430\u0440\u0441\u043a\u0438\u0439 \u0440-\u043d, \u0443\u043b. \u0420\u0430\u0437\u0434\u043e\u043b\u044c\u043d\u0430\u044f, \u0434. 26",
     );
   });
 
@@ -66,7 +95,7 @@ describe("formatTopnlabAddress", () => {
         street: { name: "\u0410\u0440\u0442\u0451\u043c\u0430 \u0443\u043b." },
         house_number: "15",
       }),
-    ).toBe("\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0410\u0440\u0442\u0451\u043c\u0430 \u0443\u043b., 15");
+    ).toBe("\u0414\u041d\u0420, \u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u0410\u0440\u0442\u0451\u043c\u0430, \u0434. 15");
   });
 
   test("falls back to the ready or legacy address", () => {
@@ -88,5 +117,35 @@ describe("formatTopnlabAddress", () => {
         full_address: "\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7",
       }),
     ).toBe("\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7");
+  });
+});
+
+describe("extractTopnlabDistrict", () => {
+  test("uses the city district instead of a city-like generic district", () => {
+    expect(
+      extractTopnlabDistrict({
+        city: "Донецк",
+        district: "Донецк г.",
+        city_district: "Пролетарский",
+      }),
+    ).toBe("Пролетарский р-н");
+  });
+
+  test("does not treat the city as a district", () => {
+    expect(
+      extractTopnlabDistrict({
+        city: { name: "Донецк" },
+        district: { name: "Донецк г." },
+      }),
+    ).toBeUndefined();
+  });
+
+  test("supports nested district values", () => {
+    expect(
+      extractTopnlabDistrict({
+        city: { name: "Донецк" },
+        city_district_name: { name: "Кировский район" },
+      }),
+    ).toBe("Кировский район");
   });
 });

@@ -56,25 +56,87 @@ function textValue(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+function comparablePlace(value: string): string {
+  return value
+    .toLocaleLowerCase("ru")
+    .replace(/^(?:г\.?|город)\s*/iu, "")
+    .replace(/\s+(?:г\.?|город)$/iu, "")
+    .replace(/\s+(?:р-?н|район)$/iu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function normalizeRegion(value: string): string {
+  const comparable = value
+    .toLocaleLowerCase("ru")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+
+  if (
+    comparable === "донецкаянародная" ||
+    comparable === "донецкаянароднаяресп" ||
+    comparable === "донецкаянароднаяреспублика"
+  ) {
+    return "Донецкая Народная Республика";
+  }
+
+  return value;
+}
+
+function normalizeCity(value: string): string {
+  const city = value
+    .replace(/^(?:г\.?|город)\s*/iu, "")
+    .replace(/\s+(?:г\.?|город)$/iu, "")
+    .trim();
+  return city ? `г. ${city}` : value;
+}
+
+function normalizeDistrict(value: string): string {
+  if (/(?:\s|^)(?:р-?н|район)$/iu.test(value)) return value;
+  return `${value} р-н`;
+}
+
+function normalizeStreet(value: string): string {
+  const street = value
+    .replace(/^(?:ул\.?|улица)\s*/iu, "")
+    .replace(/\s+(?:ул\.?|улица)$/iu, "")
+    .trim();
+  return street ? `ул. ${street}` : value;
+}
+
+function normalizeHouse(value: string): string {
+  const house = value.replace(/^(?:д\.?|дом)\s*/iu, "").trim();
+  return house ? `д. ${house}` : value;
+}
+
+export function extractTopnlabDistrict(
+  entity: Record<string, unknown>,
+): string | undefined {
+  const city = textValue(entity.city_name, entity.locality, entity.city);
+  const primary = textValue(entity.city_district_name, entity.city_district);
+  const fallback = textValue(entity.district_name, entity.district);
+  const district = primary ?? fallback;
+
+  if (!district) return undefined;
+  if (city && comparablePlace(district) === comparablePlace(city)) {
+    return undefined;
+  }
+
+  return normalizeDistrict(district);
+}
+
 export function formatTopnlabAddress(
   entity: Record<string, unknown>,
 ): string | undefined {
   const region = textValue(entity.region_name, entity.region);
   const city = textValue(entity.city_name, entity.locality, entity.city);
-  const district = textValue(
-    entity.city_district_name,
-    entity.city_district,
-    entity.district_name,
-    entity.district,
-  );
+  const district = extractTopnlabDistrict(entity);
   const street = textValue(entity.street_name, entity.street);
   const house = textValue(entity.house, entity.house_number, entity.building);
   const structured = [
-    region,
-    city,
+    region ? normalizeRegion(region) : undefined,
+    city ? normalizeCity(city) : undefined,
     district,
-    street,
-    house,
+    street ? normalizeStreet(street) : undefined,
+    house ? normalizeHouse(house) : undefined,
   ].filter((part): part is string => Boolean(part));
 
   const unique = structured.filter(
