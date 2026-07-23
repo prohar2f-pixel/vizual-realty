@@ -64,6 +64,19 @@ export function getManagerProfile(agentId: string | null | undefined): ManagerPr
   return managerProfiles[agentId];
 }
 
+function normalizeManagerName(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU");
+}
+
+export function findManagerProfileByName(name: string | null | undefined): ManagerProfile | undefined {
+  if (!name) {
+    return undefined;
+  }
+
+  const normalizedName = normalizeManagerName(name);
+  return Object.values(managerProfiles).find((profile) => normalizeManagerName(profile.name) === normalizedName);
+}
+
 export function resolveManager(agent: CrmAgent | null | undefined): ResolvedManager | undefined {
   const profile = getManagerProfile(agent?.id);
 

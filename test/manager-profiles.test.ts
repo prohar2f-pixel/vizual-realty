@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
-import { getManagerProfile, resolveManager } from "../src/lib/manager-profiles";
+import { findManagerProfileByName, getManagerProfile, resolveManager } from "../src/lib/manager-profiles";
+import { resolveTopnlabManager } from "../src/lib/topnlab/manager";
 
 test("returns Ayanot Elena's approved public profile", () => {
   expect(getManagerProfile("296892")).toMatchObject({
@@ -11,6 +12,17 @@ test("returns Ayanot Elena's approved public profile", () => {
 
 test("returns undefined for an unapproved manager ID", () => {
   expect(getManagerProfile("unknown-manager")).toBeUndefined();
+});
+
+test("finds an approved manager by the CRM full name", () => {
+  expect(findManagerProfileByName("  Аянот   Елена ")).toMatchObject({ id: "296892" });
+});
+
+test("resolves the responsible Topnlab user without assigning unknown users", () => {
+  expect(
+    resolveTopnlabManager({ user: { agent_lastname: "Аянот", agent_name: "Елена" } }),
+  ).toMatchObject({ id: "296892" });
+  expect(resolveTopnlabManager({ user: { agent_lastname: "Неизвестный", agent_name: "Сотрудник" } })).toBeUndefined();
 });
 
 test("keeps Antonovich Vitaliy's CRM contact data when no public override is approved", () => {
