@@ -1,4 +1,5 @@
 import {
+  extractTopnlabDistrict,
   formatTopnlabAddress,
   normalizePropertyDescription,
 } from "../property-content";
@@ -34,7 +35,7 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     price: Number(e.price),
     rooms: e.rooms ?? undefined,
     area: e.area ?? undefined,
-    district: e.district ?? undefined,
+    district: extractTopnlabDistrict(e),
     address: formatTopnlabAddress(e) ?? undefined,
     description: normalizePropertyDescription(e.description),
     photos: Array.isArray(e.photos) ? e.photos : [],

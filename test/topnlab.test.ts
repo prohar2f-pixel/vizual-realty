@@ -6,7 +6,8 @@ test("normalizes Topnlab property content", () => {
   const mapped = mapTopnlabEntity(entity);
 
   expect(mapped.address).toBe(
-    "Донецкая Народная Респ., г. Донецк, Пролетарский р-н, ул. Раздольная, д. 26",
+    "Донецкая Народная Республика, г. Донецк, Пролетарский р-н, ул. Раздольная, д. 26",
   );
+  expect(mapped.district).toBe("Пролетарский р-н");
   expect(mapped.description).toBe("Первая строка\nВторая строка");
 });
