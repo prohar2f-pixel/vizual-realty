@@ -29,9 +29,15 @@ export function Footer() {
         <div>
           <div className="mb-3 font-semibold text-on-brand">Контакты</div>
           <p className="text-sm leading-relaxed">
-            Телефон: ______________
+            Телефон:{" "}
+            <a href="tel:+79898028432" className="transition hover:text-accent">
+              +7 (989) 802-84-32
+            </a>
             <br />
-            E-mail: ______________
+            E-mail:{" "}
+            <a href="mailto:milmildom@mail.ru" className="transition hover:text-accent">
+              milmildom@mail.ru
+            </a>
             <br />
             Адрес: г. Донецк, ул. 50 лет СССР, 142
           </p>
