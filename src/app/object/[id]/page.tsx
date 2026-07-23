@@ -6,6 +6,7 @@ import { formatPrice } from "@/lib/format";
 import { AgentCard } from "@/components/AgentCard";
 import { LeadForm } from "@/components/LeadForm";
 import { resolveManager } from "@/lib/manager-profiles";
+import { normalizePropertyDescription } from "@/lib/property-content";
 
 async function getProperty(id: string) {
   return db.property.findUnique({ where: { id }, include: { agent: true } });
@@ -21,7 +22,7 @@ export async function generateMetadata({
   if (!p) return { title: "Объект не найден" };
   return {
     title: `${p.title} — ${formatPrice(p.price)}`,
-    description: p.description ?? undefined,
+    description: normalizePropertyDescription(p.description),
   };
 }
 
@@ -30,6 +31,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
   const p = await getProperty(id);
   if (!p) notFound();
   const manager = resolveManager(p.agent);
+  const description = normalizePropertyDescription(p.description);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -84,8 +86,10 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
               </div>
             )}
           </dl>
-          {p.description && (
-            <p className="mt-4 whitespace-pre-line text-stone-700">{p.description}</p>
+          {description && (
+            <div className="mt-5 whitespace-pre-line text-[15px] leading-7 text-stone-700">
+              {description}
+            </div>
           )}
         </div>
         <div className="space-y-4">

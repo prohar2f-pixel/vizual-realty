@@ -10,7 +10,11 @@ export function AgentCard({ name, phone, photo, telegram }: Props) {
     <div className="rounded-xl border border-stone-200 bg-white p-5 text-center">
       {photo && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt={name} className="mx-auto h-24 w-24 rounded-full object-cover" />
+        <img
+          src={photo}
+          alt={name}
+          className="mx-auto h-24 w-24 rounded-full object-cover ring-[3px] ring-brand ring-offset-2 ring-offset-white"
+        />
       )}
       <div className="mt-3 font-semibold text-text">{name}</div>
       <div className="mt-1 text-sm text-stone-500">Ваш агент</div>
