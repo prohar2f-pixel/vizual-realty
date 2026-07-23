@@ -7,7 +7,10 @@ import { AgentCard } from "@/components/AgentCard";
 import { LeadForm } from "@/components/LeadForm";
 import { PropertyDescription } from "@/components/PropertyDescription";
 import { resolveManager } from "@/lib/manager-profiles";
-import { normalizePropertyDescription } from "@/lib/property-content";
+import {
+  normalizePropertyDescription,
+  normalizeStoredPropertyDistrict,
+} from "@/lib/property-content";
 
 async function getProperty(id: string) {
   return db.property.findUnique({ where: { id }, include: { agent: true } });
@@ -33,6 +36,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
   if (!p) notFound();
   const manager = resolveManager(p.agent);
   const description = normalizePropertyDescription(p.description);
+  const district = normalizeStoredPropertyDistrict(p.district);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -74,10 +78,10 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
                 <dd className="font-medium">{p.area} м²</dd>
               </div>
             )}
-            {p.district && (
+            {district && (
               <div>
                 <dt className="text-stone-500">Район</dt>
-                <dd className="font-medium">{p.district}</dd>
+                <dd className="font-medium">{district}</dd>
               </div>
             )}
             {p.address && (

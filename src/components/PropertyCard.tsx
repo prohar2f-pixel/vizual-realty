@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import type { ResolvedManager } from "@/lib/manager-profiles";
+import { normalizeStoredPropertyDistrict } from "@/lib/property-content";
 
 type Props = {
   id: string;
@@ -14,6 +15,8 @@ type Props = {
 };
 
 export function PropertyCard({ id, title, price, rooms, area, district, photo, manager }: Props) {
+  const displayedDistrict = normalizeStoredPropertyDistrict(district);
+
   return (
     <Link
       href={`/object/${id}`}
@@ -45,7 +48,7 @@ export function PropertyCard({ id, title, price, rooms, area, district, photo, m
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-500">
           {rooms != null && <span>{rooms} комн.</span>}
           {area != null && <span>{area} м²</span>}
-          {district && <span>{district}</span>}
+          {displayedDistrict && <span>{displayedDistrict}</span>}
         </div>
         {manager && (
           <div className="mt-4 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">

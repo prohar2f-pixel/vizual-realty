@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { PropertyCard } from "@/components/PropertyCard";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { resolveManager } from "@/lib/manager-profiles";
+import { normalizeStoredPropertyDistrict } from "@/lib/property-content";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     }),
     db.property.count({ where: { isFeed: true } }),
   ]);
-  const districts = districtRows.map((r) => r.district!).sort();
+  const districts = districtRows
+    .map((row) => normalizeStoredPropertyDistrict(row.district))
+    .filter((district): district is string => Boolean(district))
+    .sort((left, right) => left.localeCompare(right, "ru"));
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">

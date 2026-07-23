@@ -3,6 +3,7 @@ import {
   extractTopnlabDistrict,
   formatTopnlabAddress,
   normalizePropertyDescription,
+  normalizeStoredPropertyDistrict,
 } from "../src/lib/property-content";
 
 describe("normalizePropertyDescription", () => {
@@ -147,5 +148,22 @@ describe("extractTopnlabDistrict", () => {
         city_district_name: { name: "Кировский район" },
       }),
     ).toBe("Кировский район");
+  });
+});
+
+describe("normalizeStoredPropertyDistrict", () => {
+  test("keeps real district labels", () => {
+    expect(normalizeStoredPropertyDistrict("Пролетарский р-н")).toBe(
+      "Пролетарский р-н",
+    );
+    expect(normalizeStoredPropertyDistrict("Кировский район")).toBe(
+      "Кировский район",
+    );
+  });
+
+  test("rejects legacy city values and ambiguous plain labels", () => {
+    expect(normalizeStoredPropertyDistrict("Донецк г.")).toBeUndefined();
+    expect(normalizeStoredPropertyDistrict("Макеевка г.")).toBeUndefined();
+    expect(normalizeStoredPropertyDistrict("Центр")).toBeUndefined();
   });
 });

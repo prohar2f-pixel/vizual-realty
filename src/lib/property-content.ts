@@ -123,6 +123,16 @@ export function extractTopnlabDistrict(
   return normalizeDistrict(district);
 }
 
+export function normalizeStoredPropertyDistrict(
+  value: string | null | undefined,
+): string | undefined {
+  const district = value?.trim();
+  if (!district) return undefined;
+  return /(?:^|\s)(?:р-?н|район)\.?$/iu.test(district)
+    ? district
+    : undefined;
+}
+
 export function formatTopnlabAddress(
   entity: Record<string, unknown>,
 ): string | undefined {
