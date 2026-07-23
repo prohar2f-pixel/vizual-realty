@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { AgentCard } from "@/components/AgentCard";
 import { LeadForm } from "@/components/LeadForm";
+import { PropertyDescription } from "@/components/PropertyDescription";
 import { resolveManager } from "@/lib/manager-profiles";
 import { normalizePropertyDescription } from "@/lib/property-content";
 
@@ -86,11 +87,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
               </div>
             )}
           </dl>
-          {description && (
-            <div className="mt-5 whitespace-pre-line text-[15px] leading-7 text-stone-700">
-              {description}
-            </div>
-          )}
+          {description && <PropertyDescription value={description} />}
         </div>
         <div className="space-y-4">
           {manager ? (
