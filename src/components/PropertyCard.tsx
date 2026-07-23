@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
+import type { ResolvedManager } from "@/lib/manager-profiles";
 
 type Props = {
   id: string;
@@ -9,9 +10,10 @@ type Props = {
   area: number | null;
   district: string | null;
   photo: string | null;
+  manager?: ResolvedManager;
 };
 
-export function PropertyCard({ id, title, price, rooms, area, district, photo }: Props) {
+export function PropertyCard({ id, title, price, rooms, area, district, photo, manager }: Props) {
   return (
     <Link
       href={`/object/${id}`}
@@ -45,6 +47,18 @@ export function PropertyCard({ id, title, price, rooms, area, district, photo }:
           {area != null && <span>{area} м²</span>}
           {district && <span>{district}</span>}
         </div>
+        {manager && (
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5">
+            {manager.photo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={manager.photo} alt="" className="h-9 w-9 rounded-full object-cover" />
+            )}
+            <div className="min-w-0">
+              <div className="text-xs text-emerald-800">Ваш менеджер</div>
+              <div className="truncate text-sm font-semibold text-text">{manager.name}</div>
+            </div>
+          </div>
+        )}
       </div>
     </Link>
   );

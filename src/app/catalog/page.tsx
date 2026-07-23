@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { PropertyCard } from "@/components/PropertyCard";
 import { CatalogFilters } from "@/components/CatalogFilters";
+import { resolveManager } from "@/lib/manager-profiles";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   if (sp.district) where.district = sp.district;
 
   const [items, districtRows, totalItems] = await Promise.all([
-    db.property.findMany({ where, orderBy: { updatedAt: "desc" } }),
+    db.property.findMany({ where, orderBy: { updatedAt: "desc" }, include: { agent: true } }),
     db.property.findMany({
       where: { isFeed: true, district: { not: null } },
       select: { district: true },
@@ -50,6 +51,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
               area={p.area}
               district={p.district}
               photo={p.photos[0] ?? null}
+              manager={resolveManager(p.agent)}
             />
           ))}
         </div>

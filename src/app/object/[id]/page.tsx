@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { AgentCard } from "@/components/AgentCard";
 import { LeadForm } from "@/components/LeadForm";
+import { resolveManager } from "@/lib/manager-profiles";
 
 async function getProperty(id: string) {
   return db.property.findUnique({ where: { id }, include: { agent: true } });
@@ -27,6 +29,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const p = await getProperty(id);
   if (!p) notFound();
+  const manager = resolveManager(p.agent);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -86,8 +89,20 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
           )}
         </div>
         <div className="space-y-4">
-          {p.agent && (
-            <AgentCard name={p.agent.name} phone={p.agent.phone} photoUrl={p.agent.photoUrl} />
+          {manager ? (
+            <AgentCard
+              name={manager.name}
+              phone={manager.phone}
+              photo={manager.photo}
+              telegram={manager.telegram}
+            />
+          ) : (
+            <p className="rounded-xl border border-stone-200 bg-white p-5 text-sm leading-relaxed text-stone-600">
+              По этому объекту менеджер уточняется.{" "}
+              <Link href="/team" className="font-medium text-accent-text hover:underline">
+                Познакомиться с командой
+              </Link>
+            </p>
           )}
           <LeadForm objectShortId={p.shortId} objectType={p.objectType} />
         </div>
