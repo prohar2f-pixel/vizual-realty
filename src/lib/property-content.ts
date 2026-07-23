@@ -14,9 +14,12 @@ function decodeEntities(value: string): string {
         ? NAMED_ENTITIES[name.toLowerCase()]
         : match,
     )
-    .replace(/&#(\d+);/g, (_, code: string) =>
-      String.fromCodePoint(Number(code)),
-    );
+    .replace(/&#(\d+);/g, (match, code: string) => {
+      const codePoint = Number(code);
+      return Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : match;
+    });
 }
 
 export function normalizePropertyDescription(
@@ -24,13 +27,11 @@ export function normalizePropertyDescription(
 ): string | undefined {
   if (!value) return undefined;
 
-  const normalized = decodeEntities(
-    value
-      .replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/gi, "")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(?:div|h[1-6]|li|p)\s*>/gi, "\n")
-      .replace(/<[^>]*>/g, ""),
-  )
+  const normalized = decodeEntities(value)
+    .replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:div|h[1-6]|li|p)\s*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
     .replace(/\r\n?/g, "\n")
     .split("\n")
     .map((line) => line.trim())
@@ -58,17 +59,22 @@ function textValue(...values: unknown[]): string | undefined {
 export function formatTopnlabAddress(
   entity: Record<string, unknown>,
 ): string | undefined {
+  const region = textValue(entity.region_name, entity.region);
+  const city = textValue(entity.city_name, entity.locality, entity.city);
+  const district = textValue(
+    entity.city_district_name,
+    entity.city_district,
+    entity.district_name,
+    entity.district,
+  );
+  const street = textValue(entity.street_name, entity.street);
+  const house = textValue(entity.house, entity.house_number, entity.building);
   const structured = [
-    textValue(entity.region_name, entity.region),
-    textValue(entity.city_name, entity.locality, entity.city),
-    textValue(
-      entity.city_district_name,
-      entity.city_district,
-      entity.district_name,
-      entity.district,
-    ),
-    textValue(entity.street_name, entity.street),
-    textValue(entity.house, entity.house_number, entity.building),
+    region,
+    city,
+    district,
+    street,
+    house,
   ].filter((part): part is string => Boolean(part));
 
   const unique = structured.filter(
@@ -79,7 +85,7 @@ export function formatTopnlabAddress(
       ) === index,
   );
 
-  if (unique.length >= 2) return unique.join(", ");
+  if (street && house) return unique.join(", ");
 
   return textValue(
     entity.full_address,

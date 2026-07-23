@@ -21,6 +21,21 @@ describe("normalizePropertyDescription", () => {
     ).toBe("\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 & \u0434\u0435\u0442\u0430\u043b\u0438");
   });
 
+  test("turns entity-encoded breaks into newlines and removes encoded tags", () => {
+    expect(
+      normalizePropertyDescription(
+        "\u0422\u0435\u043a\u0441\u0442&lt;br&gt;\u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u0435&lt;br /&gt;&lt;strong&gt;\u0431\u0435\u0437 \u0440\u0430\u0437\u043c\u0435\u0442\u043a\u0438&lt;/strong&gt;",
+      ),
+    ).toBe("\u0422\u0435\u043a\u0441\u0442\n\u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0435\u043d\u0438\u0435\n\u0431\u0435\u0437 \u0440\u0430\u0437\u043c\u0435\u0442\u043a\u0438");
+  });
+
+  test("preserves invalid numeric entities without throwing", () => {
+    expect(() => normalizePropertyDescription("\u0422\u0435\u043a\u0441\u0442 &#1114112;")).not.toThrow();
+    expect(normalizePropertyDescription("\u0422\u0435\u043a\u0441\u0442 &#1114112;")).toBe(
+      "\u0422\u0435\u043a\u0441\u0442 &#1114112;",
+    );
+  });
+
   test("returns undefined for empty markup", () => {
     expect(normalizePropertyDescription("<br><p> </p>")).toBeUndefined();
   });
@@ -63,5 +78,15 @@ describe("formatTopnlabAddress", () => {
     expect(formatTopnlabAddress({ address: "\u041c\u0438\u0440\u0430 \u0443\u043b., 7" })).toBe(
       "\u041c\u0438\u0440\u0430 \u0443\u043b., 7",
     );
+  });
+
+  test("prefers a complete ready address over partial structured fields", () => {
+    expect(
+      formatTopnlabAddress({
+        region: "\u0414\u041d\u0420",
+        city: "\u0414\u043e\u043d\u0435\u0446\u043a",
+        full_address: "\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7",
+      }),
+    ).toBe("\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7");
   });
 });
