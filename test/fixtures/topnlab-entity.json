@@ -9,7 +9,12 @@
   "area": 54.3,
   "district": "Центр",
   "address": "ул. Артёма, 15",
-  "description": "Светлая квартира с ремонтом",
+  "region": "Донецкая Народная Респ.",
+  "city": "г. Донецк",
+  "city_district": "Пролетарский р-н",
+  "street": "ул. Раздольная",
+  "house": "д. 26",
+  "description": "Первая строка<br />Вторая строка",
   "photos": ["https://cdn.topnlab.ru/1.jpg", "https://cdn.topnlab.ru/2.jpg"],
   "is_feed": true,
   "agent": { "id": "77", "name": "Ольга Петрова", "phone": "79991112233", "photo": "https://cdn.topnlab.ru/agent77.jpg" }

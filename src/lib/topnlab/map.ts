@@ -1,3 +1,8 @@
+import {
+  formatTopnlabAddress,
+  normalizePropertyDescription,
+} from "../property-content";
+
 export type MappedAgent = { id: string; name: string; phone?: string; photoUrl?: string };
 
 export type MappedProperty = {
@@ -30,8 +35,8 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     rooms: e.rooms ?? undefined,
     area: e.area ?? undefined,
     district: e.district ?? undefined,
-    address: e.address ?? undefined,
-    description: e.description ?? undefined,
+    address: formatTopnlabAddress(e) ?? undefined,
+    description: normalizePropertyDescription(e.description),
     photos: Array.isArray(e.photos) ? e.photos : [],
     isFeed: e.is_feed !== false,
     agent: e.agent
