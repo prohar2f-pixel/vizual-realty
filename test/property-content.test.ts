@@ -1,0 +1,67 @@
+import { describe, expect, test } from "vitest";
+import {
+  formatTopnlabAddress,
+  normalizePropertyDescription,
+} from "../src/lib/property-content";
+
+describe("normalizePropertyDescription", () => {
+  test("converts CRM line breaks to clean text paragraphs", () => {
+    expect(
+      normalizePropertyDescription(
+        "\u041f\u0435\u0440\u0432\u0430\u044f \u0441\u0442\u0440\u043e\u043a\u0430<br />\u0412\u0442\u043e\u0440\u0430\u044f \u0441\u0442\u0440\u043e\u043a\u0430<br><br/>\u0422\u0435\u043b\u0435\u0444\u043e\u043d&nbsp;\u0430\u0433\u0435\u043d\u0442\u0430",
+      ),
+    ).toBe("\u041f\u0435\u0440\u0432\u0430\u044f \u0441\u0442\u0440\u043e\u043a\u0430\n\u0412\u0442\u043e\u0440\u0430\u044f \u0441\u0442\u0440\u043e\u043a\u0430\n\n\u0422\u0435\u043b\u0435\u0444\u043e\u043d \u0430\u0433\u0435\u043d\u0442\u0430");
+  });
+
+  test("removes remaining markup without executing it", () => {
+    expect(
+      normalizePropertyDescription(
+        "<p>\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 &amp; \u0434\u0435\u0442\u0430\u043b\u0438</p><script>alert(1)</script>",
+      ),
+    ).toBe("\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 & \u0434\u0435\u0442\u0430\u043b\u0438");
+  });
+
+  test("returns undefined for empty markup", () => {
+    expect(normalizePropertyDescription("<br><p> </p>")).toBeUndefined();
+  });
+});
+
+describe("formatTopnlabAddress", () => {
+  test("builds the CRM address from structured components", () => {
+    expect(
+      formatTopnlabAddress({
+        region: "\u0414\u043e\u043d\u0435\u0446\u043a\u0430\u044f \u041d\u0430\u0440\u043e\u0434\u043d\u0430\u044f \u0420\u0435\u0441\u043f.",
+        city: "\u0433. \u0414\u043e\u043d\u0435\u0446\u043a",
+        city_district: "\u041f\u0440\u043e\u043b\u0435\u0442\u0430\u0440\u0441\u043a\u0438\u0439 \u0440-\u043d",
+        street: "\u0443\u043b. \u0420\u0430\u0437\u0434\u043e\u043b\u044c\u043d\u0430\u044f",
+        house: "\u0434. 26",
+        address: "\u0420\u0430\u0437\u0434\u043e\u043b\u044c\u043d\u0430\u044f \u0443\u043b., 26",
+      }),
+    ).toBe(
+      "\u0414\u043e\u043d\u0435\u0446\u043a\u0430\u044f \u041d\u0430\u0440\u043e\u0434\u043d\u0430\u044f \u0420\u0435\u0441\u043f., \u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u041f\u0440\u043e\u043b\u0435\u0442\u0430\u0440\u0441\u043a\u0438\u0439 \u0440-\u043d, \u0443\u043b. \u0420\u0430\u0437\u0434\u043e\u043b\u044c\u043d\u0430\u044f, \u0434. 26",
+    );
+  });
+
+  test("supports nested Topnlab values and removes duplicates", () => {
+    expect(
+      formatTopnlabAddress({
+        region: { name: "\u0414\u041d\u0420" },
+        city: { name: "\u0414\u043e\u043d\u0435\u0446\u043a" },
+        district: { name: "\u0414\u043e\u043d\u0435\u0446\u043a" },
+        street: { name: "\u0410\u0440\u0442\u0451\u043c\u0430 \u0443\u043b." },
+        house_number: "15",
+      }),
+    ).toBe("\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0410\u0440\u0442\u0451\u043c\u0430 \u0443\u043b., 15");
+  });
+
+  test("falls back to the ready or legacy address", () => {
+    expect(
+      formatTopnlabAddress({
+        full_address: "\u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7",
+      }),
+    ).toBe("\u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7");
+    expect(formatTopnlabAddress({ address: "\u041c\u0438\u0440\u0430 \u0443\u043b., 7" })).toBe(
+      "\u041c\u0438\u0440\u0430 \u0443\u043b., 7",
+    );
+  });
+});
