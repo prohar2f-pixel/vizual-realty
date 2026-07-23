@@ -6,13 +6,162 @@ const mapUrl =
 const routeUrl =
   "https://yandex.ru/maps/?mode=search&text=%D0%94%D0%BE%D0%BD%D0%B5%D1%86%D0%BA%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%2050-%D0%BB%D0%B5%D1%82%D0%B8%D1%8F%20%D0%A1%D0%A1%D0%A1%D0%A0%2C%20142";
 
+type Manager = {
+  id: number;
+  name: string;
+  phone: string;
+  phoneHref?: string;
+  photoUrl?: string;
+  telegramUrl: string;
+};
+
+const managers: Manager[] = [
+  {
+    id: 1,
+    name: "Аянот Елена",
+    phone: "+7 (949) 537-55-65",
+    phoneHref: "tel:+79495375565",
+    photoUrl: "/managers/ayanot-elena.webp",
+    telegramUrl: "https://t.me/Lena_Katan",
+  },
+  {
+    id: 2,
+    name: "Банитюк Юлия",
+    phone: "+7 (949) 578-09-33",
+    phoneHref: "tel:+79495780933",
+    photoUrl: "/managers/banityuk-yulia.webp",
+    telegramUrl: "https://t.me/Lia_banituk",
+  },
+  {
+    id: 3,
+    name: "Хаджинова Алина",
+    phone: "+7 (949) 400-92-74",
+    phoneHref: "tel:+79494009274",
+    photoUrl: "/managers/khadzhinova-alina.webp",
+    telegramUrl: "https://t.me/alin_ka160",
+  },
+  {
+    id: 4,
+    name: "Бороха Юли",
+    phone: "+7 (918) 295-60-93",
+    phoneHref: "tel:+79182956093",
+    photoUrl: "/managers/borokha-yuli.webp",
+    telegramUrl: "https://t.me/juliaborokha2",
+  },
+  {
+    id: 5,
+    name: "Мельник Сергей",
+    phone: "+7 (949) 647-72-56",
+    phoneHref: "tel:+79496477256",
+    photoUrl: "/managers/melnik-sergey.webp",
+    telegramUrl: "https://t.me/sergeymcv",
+  },
+  {
+    id: 6,
+    name: "Медведева Елена",
+    phone: "+7 (949) 715-80-77",
+    phoneHref: "tel:+79497158077",
+    photoUrl: "/managers/medvedeva-elena.webp",
+    telegramUrl: "https://t.me/Elen_md",
+  },
+  ...Array.from({ length: 1 }, (_, index) => ({
+    id: index + 7,
+    name: "Фамилия Имя",
+    phone: "+7 (___) ___-__-__",
+    telegramUrl: "https://t.me/",
+  })),
+];
+
+function ManagerAvatar({
+  name,
+  photoUrl,
+}: {
+  name: string;
+  photoUrl?: string;
+}) {
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photoUrl}
+        alt={name}
+        className="h-9 w-9 shrink-0 rounded-full border-2 border-brand object-cover"
+      />
+    );
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-brand bg-brand/10 text-brand"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="h-4 w-4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      >
+        <circle cx="12" cy="8" r="3.25" />
+        <path d="M5.75 19c.55-3.35 2.75-5.25 6.25-5.25s5.7 1.9 6.25 5.25" />
+      </svg>
+    </div>
+  );
+}
+
 export default function ContactsPage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12">
+    <main className="mx-auto max-w-[1440px] px-4 py-12">
       <h1 className="font-display text-3xl font-bold text-brand">Контакты</h1>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.25fr)]">
-        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(330px,1fr)_360px_430px]">
+        <section className="h-[420px] rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+          <h2 className="font-display text-xl font-bold text-brand">
+            Контакты менеджеров
+          </h2>
+
+          <div className="mt-3 grid gap-1">
+            {managers.map((manager) => (
+              <div
+                key={manager.id}
+                className="flex min-h-10 items-center gap-3 rounded-xl bg-stone-50 px-3 py-0.5"
+              >
+                <ManagerAvatar
+                  name={manager.name}
+                  photoUrl={manager.photoUrl}
+                />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-text">
+                    {manager.name}
+                  </div>
+                  {manager.phoneHref ? (
+                    <a
+                      href={manager.phoneHref}
+                      className="mt-0.5 block text-xs text-brand hover:underline"
+                    >
+                      {manager.phone}
+                    </a>
+                  ) : (
+                    <div className="mt-0.5 text-xs text-stone-400">
+                      {manager.phone}
+                    </div>
+                  )}
+                </div>
+                <a
+                  href={manager.telegramUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-auto shrink-0 rounded-lg border border-brand px-2.5 py-1.5 text-[11px] font-semibold leading-none text-brand transition hover:bg-brand hover:text-on-brand"
+                  aria-label={`Написать менеджеру ${manager.name} в Telegram`}
+                >
+                  Написать менеджеру
+                </a>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="h-[420px] rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
           <dl className="space-y-5 text-text/80">
             <div>
               <dt className="text-sm text-stone-500">Телефон</dt>
@@ -54,17 +203,17 @@ export default function ContactsPage() {
           >
             Проложить маршрут
           </a>
-        </div>
+        </section>
 
-        <div className="min-h-[420px] overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-sm">
+        <section className="h-[420px] overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 shadow-sm">
           <iframe
             src={mapUrl}
             title="Карта проезда к офису агентства «Визуал»"
-            className="h-full min-h-[420px] w-full border-0"
+            className="h-full w-full border-0"
             loading="lazy"
             allowFullScreen
           />
-        </div>
+        </section>
       </div>
     </main>
   );

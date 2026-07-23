@@ -1,46 +1,61 @@
-import { db } from "@/lib/db";
+import { TeamCarousel, type TeamManager } from "@/components/TeamCarousel";
 
 export const metadata = { title: "Наша команда" };
-export const dynamic = "force-dynamic";
 
-export default async function TeamPage() {
-  const agents = await db.agent.findMany({ orderBy: { name: "asc" } });
+const managers: TeamManager[] = [
+  {
+    name: "Аянот Елена",
+    phone: "+7 (949) 537-55-65",
+    phoneHref: "tel:+79495375565",
+    telegramUrl: "https://t.me/Lena_Katan",
+    photoUrl: "/managers/ayanot-elena-card.webp",
+  },
+  {
+    name: "Банитюк Юлия",
+    phone: "+7 (949) 578-09-33",
+    phoneHref: "tel:+79495780933",
+    telegramUrl: "https://t.me/Lia_banituk",
+    photoUrl: "/managers/banityuk-yulia-card.webp",
+  },
+  {
+    name: "Хаджинова Алина",
+    phone: "+7 (949) 400-92-74",
+    phoneHref: "tel:+79494009274",
+    telegramUrl: "https://t.me/alin_ka160",
+    photoUrl: "/managers/khadzhinova-alina-card.webp",
+  },
+  {
+    name: "Бороха Юли",
+    phone: "+7 (918) 295-60-93",
+    phoneHref: "tel:+79182956093",
+    telegramUrl: "https://t.me/juliaborokha2",
+    photoUrl: "/managers/borokha-yuli-card.webp",
+  },
+  {
+    name: "Мельник Сергей",
+    phone: "+7 (949) 647-72-56",
+    phoneHref: "tel:+79496477256",
+    telegramUrl: "https://t.me/sergeymcv",
+    photoUrl: "/managers/melnik-sergey-card.webp",
+  },
+  {
+    name: "Медведева Елена",
+    phone: "+7 (949) 715-80-77",
+    phoneHref: "tel:+79497158077",
+    telegramUrl: "https://t.me/Elen_md",
+    photoUrl: "/managers/medvedeva-elena-card.webp",
+  },
+];
 
+export default function TeamPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <h1 className="font-display text-3xl font-bold text-brand">Наша команда</h1>
-      <p className="mt-2 text-text/70">Агенты, которые помогут с подбором и сделкой.</p>
+      <p className="mt-2 max-w-2xl text-text/70">
+        Выберите менеджера, который поможет с подбором объекта и сопровождением сделки.
+      </p>
 
-      {agents.length > 0 ? (
-        <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-          {agents.map((a) => (
-            <div
-              key={a.id}
-              className="rounded-xl border border-stone-200 bg-white p-5 text-center"
-            >
-              {a.photoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={a.photoUrl}
-                  alt={a.name}
-                  className="mx-auto h-28 w-28 rounded-full object-cover"
-                />
-              )}
-              <div className="mt-3 font-semibold text-text">{a.name}</div>
-              {a.phone && (
-                <a
-                  href={`tel:${a.phone}`}
-                  className="mt-1 block text-sm text-accent-text hover:underline"
-                >
-                  {a.phone}
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-8 text-stone-500">Агенты появятся после подключения CRM.</p>
-      )}
+      <TeamCarousel managers={managers} />
     </main>
   );
 }
