@@ -30,7 +30,7 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     id: String(e.id),
     shortId: e.short_id ?? undefined,
     deal: e.deal,
-    objectType: e.object_type,
+    objectType: e.object_type ?? e.realty_type,
     title: e.title,
     price: Number(e.price),
     rooms: e.rooms ?? undefined,
