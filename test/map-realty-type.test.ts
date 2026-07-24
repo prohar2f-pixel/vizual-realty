@@ -13,6 +13,28 @@ test("maps the real Topnlab realty_type field", () => {
   expect(mapped.objectType).toBe("flat");
 });
 
+test("maps Topnlab deal_type when deal is omitted", () => {
+  const { deal: _deal, ...realEntity } = entity;
+
+  expect(
+    mapTopnlabEntity({
+      ...realEntity,
+      deal_type: "rent",
+    }).deal,
+  ).toBe("rent");
+});
+
+test("uses Topnlab display_title before generating a title", () => {
+  const { title: _title, ...realEntity } = entity;
+
+  expect(
+    mapTopnlabEntity({
+      ...realEntity,
+      display_title: "Готовое название из Topnlab",
+    }).title,
+  ).toBe("Готовое название из Topnlab");
+});
+
 test("builds a readable title when Topnlab omits title", () => {
   const { title: _title, object_type: _objectType, ...realEntity } = entity;
 

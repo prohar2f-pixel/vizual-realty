@@ -40,7 +40,11 @@ function buildPropertyTitle(
   address?: string,
 ): string {
   const explicitTitle =
-    typeof entity.title === "string" ? entity.title.trim() : "";
+    typeof entity.title === "string"
+      ? entity.title.trim()
+      : typeof entity.display_title === "string"
+        ? entity.display_title.trim()
+        : "";
   if (explicitTitle) return explicitTitle;
 
   const typeTitle = OBJECT_TYPE_TITLES[objectType] ?? "объект недвижимости";
@@ -63,7 +67,7 @@ export function mapTopnlabEntity(e: any): MappedProperty {
   return {
     id: String(e.id),
     shortId: e.short_id ?? undefined,
-    deal: e.deal,
+    deal: e.deal ?? e.deal_type ?? e.operation_type ?? "sale",
     objectType,
     title: buildPropertyTitle(e, objectType, address),
     price: Number(e.price),

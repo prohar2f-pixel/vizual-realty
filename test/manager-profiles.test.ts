@@ -25,6 +25,13 @@ test("resolves the responsible Topnlab user without assigning unknown users", ()
   expect(resolveTopnlabManager({ user: { agent_lastname: "Неизвестный", agent_name: "Сотрудник" } })).toBeUndefined();
 });
 
+test("resolves the manager from Topnlab created_by", () => {
+  expect(resolveTopnlabManager({ created_by: 298110 })).toMatchObject({
+    id: "298110",
+    name: "Хаджинова Алина",
+  });
+});
+
 test("keeps Antonovich Vitaliy's CRM contact data when no public override is approved", () => {
   const crmPhone = "+7 (949) 555-00-00";
 
