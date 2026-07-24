@@ -58,6 +58,27 @@ function buildPropertyTitle(
   return address ? `${capitalized}, ${address}` : capitalized;
 }
 
+function mapPhotoUrls(photos: unknown): string[] {
+  if (!Array.isArray(photos)) return [];
+
+  return photos.flatMap((photo) => {
+    if (typeof photo === "string" && photo.trim()) return [photo.trim()];
+    if (!photo || typeof photo !== "object") return [];
+
+    const value = photo as Record<string, unknown>;
+    const url = [
+      value.large_hash,
+      value.original,
+      value.original_hash,
+      value.medium_hash,
+      value.small_hash,
+      value.url,
+    ].find((candidate) => typeof candidate === "string" && candidate.trim());
+
+    return typeof url === "string" ? [url.trim()] : [];
+  });
+}
+
 // Единственное место правки названий полей. Когда придёт реальный ответ
 // get-entities (нужен API-ключ), сверить поля и при необходимости поправить здесь.
 export function mapTopnlabEntity(e: any): MappedProperty {
@@ -76,7 +97,7 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     district: extractTopnlabDistrict(e),
     address,
     description: normalizePropertyDescription(e.description),
-    photos: Array.isArray(e.photos) ? e.photos : [],
+    photos: mapPhotoUrls(e.photos),
     isFeed: e.is_feed !== false,
     agent: e.agent
       ? { id: String(e.agent.id), name: e.agent.name, phone: e.agent.phone, photoUrl: e.agent.photo }

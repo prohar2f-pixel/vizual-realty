@@ -35,6 +35,26 @@ test("uses Topnlab display_title before generating a title", () => {
   ).toBe("Готовое название из Topnlab");
 });
 
+test("maps Topnlab photo objects to the best available image URLs", () => {
+  expect(
+    mapTopnlabEntity({
+      ...entity,
+      photos: [
+        {
+          large_hash: "https://files.topnlab.ru/large.jpg",
+          medium_hash: "https://files.topnlab.ru/medium.jpg",
+          original: "https://files.topnlab.ru/original.jpg",
+        },
+        { original: "https://files.topnlab.ru/second.jpg" },
+        null,
+      ],
+    }).photos,
+  ).toEqual([
+    "https://files.topnlab.ru/large.jpg",
+    "https://files.topnlab.ru/second.jpg",
+  ]);
+});
+
 test("builds a readable title when Topnlab omits title", () => {
   const { title: _title, object_type: _objectType, ...realEntity } = entity;
 
