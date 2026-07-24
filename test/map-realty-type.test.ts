@@ -12,3 +12,21 @@ test("maps the real Topnlab realty_type field", () => {
 
   expect(mapped.objectType).toBe("flat");
 });
+
+test("builds a readable title when Topnlab omits title", () => {
+  const { title: _title, object_type: _objectType, ...realEntity } = entity;
+
+  const mapped = mapTopnlabEntity({
+    ...realEntity,
+    realty_type: "flat",
+    region: undefined,
+    city: undefined,
+    city_district: undefined,
+    district: undefined,
+    street: "Артёма",
+    house: "15",
+    address: undefined,
+  });
+
+  expect(mapped.title).toBe("2-комн. квартира, ул. Артёма, д. 15");
+});
