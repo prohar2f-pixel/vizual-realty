@@ -37,6 +37,7 @@ const OBJECT_TYPE_TITLES: Record<string, string> = {
 function buildPropertyTitle(
   entity: Record<string, any>,
   objectType: string,
+  rooms: number | undefined,
   address?: string,
 ): string {
   const explicitTitle =
@@ -49,13 +50,19 @@ function buildPropertyTitle(
 
   const typeTitle = OBJECT_TYPE_TITLES[objectType] ?? "объект недвижимости";
   const roomPrefix =
-    objectType === "flat" && Number.isFinite(Number(entity.rooms))
-      ? `${Number(entity.rooms)}-комн. `
+    objectType === "flat" && rooms != null
+      ? `${rooms}-комн. `
       : "";
   const subject = `${roomPrefix}${typeTitle}`;
   const capitalized = subject.charAt(0).toLocaleUpperCase("ru") + subject.slice(1);
 
   return address ? `${capitalized}, ${address}` : capitalized;
+}
+
+function normalizeRooms(value: unknown): number | undefined {
+  const rooms = Number(value);
+  if (!Number.isFinite(rooms)) return undefined;
+  return rooms >= 10 && rooms % 10 === 0 ? rooms / 10 : rooms;
 }
 
 function mapPhotoUrls(photos: unknown): string[] {
@@ -84,15 +91,16 @@ function mapPhotoUrls(photos: unknown): string[] {
 export function mapTopnlabEntity(e: any): MappedProperty {
   const objectType = e.object_type ?? e.realty_type;
   const address = formatTopnlabAddress(e) ?? undefined;
+  const rooms = normalizeRooms(e.rooms);
 
   return {
     id: String(e.id),
     shortId: e.short_id ?? undefined,
     deal: e.deal ?? e.deal_type ?? e.operation_type ?? "sale",
     objectType,
-    title: buildPropertyTitle(e, objectType, address),
+    title: buildPropertyTitle(e, objectType, rooms, address),
     price: Number(e.price),
-    rooms: e.rooms ?? undefined,
+    rooms,
     area: e.area ?? undefined,
     district: extractTopnlabDistrict(e),
     address,
