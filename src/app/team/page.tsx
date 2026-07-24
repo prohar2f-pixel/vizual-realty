@@ -7,7 +7,7 @@ const managers: TeamManager[] = [
     name: "Аянот Елена",
     phone: "+7 (949) 537-55-65",
     phoneHref: "tel:+79495375565",
-    telegramUrl: "https://t.me/Lena_Katan",
+    telegramUrl: "https://t.me/Lena_Katana",
     photoUrl: "/managers/ayanot-elena-card.webp",
   },
   {
@@ -28,7 +28,7 @@ const managers: TeamManager[] = [
     name: "Бороха Юли",
     phone: "+7 (918) 295-60-93",
     phoneHref: "tel:+79182956093",
-    telegramUrl: "https://t.me/juliaborokha2",
+    telegramUrl: "https://t.me/juliaborokha24",
     photoUrl: "/managers/borokha-yuli-card.webp",
   },
   {

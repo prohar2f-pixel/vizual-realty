@@ -22,7 +22,7 @@ const managers: Manager[] = [
     phone: "+7 (949) 537-55-65",
     phoneHref: "tel:+79495375565",
     photoUrl: "/managers/ayanot-elena.webp",
-    telegramUrl: "https://t.me/Lena_Katan",
+    telegramUrl: "https://t.me/Lena_Katana",
   },
   {
     id: 2,
@@ -46,7 +46,7 @@ const managers: Manager[] = [
     phone: "+7 (918) 295-60-93",
     phoneHref: "tel:+79182956093",
     photoUrl: "/managers/borokha-yuli.webp",
-    telegramUrl: "https://t.me/juliaborokha2",
+    telegramUrl: "https://t.me/juliaborokha24",
   },
   {
     id: 5,

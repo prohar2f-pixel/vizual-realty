@@ -27,7 +27,7 @@ const managerProfiles: Record<string, ManagerProfile> = {
     name: "Аянот Елена",
     phone: "+7 (949) 537-55-65",
     photo: "/managers/ayanot-elena-card.webp",
-    telegram: "https://t.me/Lena_Katan",
+    telegram: "https://t.me/Lena_Katana",
   },
   "296881": {
     id: "296881",

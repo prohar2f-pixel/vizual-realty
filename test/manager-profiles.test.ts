@@ -59,7 +59,7 @@ test("uses Ayanot Elena's approved Telegram URL and portrait", () => {
       photoUrl: null,
     }),
   ).toMatchObject({
-    telegram: "https://t.me/Lena_Katan",
+    telegram: "https://t.me/Lena_Katana",
     photo: "/managers/ayanot-elena-card.webp",
   });
 });
