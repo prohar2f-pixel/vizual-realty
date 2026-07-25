@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the homepage hero copy with the approved two-line Russian text.
+**Goal:** Render the approved two-line Russian homepage hero copy in bold.
 
-**Architecture:** Keep the existing homepage component and styling intact. Add one focused server-rendering regression test, then replace the paragraph content and insert an explicit JSX `<br />` between the two approved sentences.
+**Architecture:** Keep the existing homepage component and layout intact. Extend the focused server-rendering regression test to require the `font-bold` class, then replace only the existing `font-medium` weight.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript, Vitest, React DOM server renderer.
 
@@ -13,7 +13,8 @@
 - Line 1 must be exactly: `Продажа квартир, домов, и земельных участков.`
 - Line 2 must be exactly: `Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.`
 - The split must be explicit and must not depend on viewport width.
-- Preserve existing typography, spacing, responsive layout, metadata, and all other copy.
+- Both lines must use the Tailwind `font-bold` weight.
+- Preserve existing size, color, spacing, responsive layout, metadata, and all other copy.
 
 ---
 
@@ -44,6 +45,7 @@ test("renders the approved homepage hero copy as two explicit lines", async () =
   expect(html).toContain(
     "Продажа квартир, домов, и земельных участков.<br/>Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.",
   );
+  expect(html).toMatch(/<p class="[^"]*font-bold[^"]*">/);
 });
 ```
 
@@ -51,12 +53,12 @@ test("renders the approved homepage hero copy as two explicit lines", async () =
 
 Run: `npm.cmd test -- test/homepage-hero.test.tsx`
 
-Expected: FAIL because the current hero paragraph contains the old one-line copy.
+Expected: FAIL because the current hero paragraph uses `font-medium` instead of `font-bold`.
 
 - [ ] **Step 3: Apply the minimal homepage change**
 
 ```tsx
-<p className="mx-auto text-base font-medium text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
+<p className="mx-auto text-base font-bold text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
   Продажа квартир, домов, и земельных участков.
   <br />
   Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.
