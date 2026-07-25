@@ -1,4 +1,5 @@
 import {
+  extractTopnlabCity,
   extractTopnlabDistrict,
   formatTopnlabAddress,
   normalizePropertyDescription,
@@ -15,6 +16,7 @@ export type MappedProperty = {
   price: number;
   rooms?: number;
   area?: number;
+  city?: string;
   district?: string;
   address?: string;
   description?: string;
@@ -102,6 +104,7 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     price: Number(e.price),
     rooms,
     area: e.area ?? undefined,
+    city: extractTopnlabCity(e),
     district: extractTopnlabDistrict(e),
     address,
     description: normalizePropertyDescription(e.description),

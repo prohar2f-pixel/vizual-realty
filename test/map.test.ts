@@ -21,6 +21,7 @@ test("маппит объект Topnlab в нашу модель", () => {
   expect(p.id).toBe("1233");
   expect(p.shortId).toBe(53020);
   expect(p.price).toBe(4500000);
+  expect(p.city).toBe("Донецк");
   expect(p.photos).toHaveLength(2);
   expect(p.agent?.name).toBe("Ольга Петрова");
 });

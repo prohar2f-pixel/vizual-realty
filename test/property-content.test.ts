@@ -1,10 +1,22 @@
 import { describe, expect, test } from "vitest";
 import {
+  extractTopnlabCity,
   extractTopnlabDistrict,
   formatTopnlabAddress,
   normalizePropertyDescription,
   normalizeStoredPropertyDistrict,
 } from "../src/lib/property-content";
+
+describe("extractTopnlabCity", () => {
+  test("normalizes plain and nested Topnlab city values", () => {
+    expect(extractTopnlabCity({ city: "  г. Донецк  " })).toBe("Донецк");
+    expect(extractTopnlabCity({ city_name: { name: "Макеевка" } })).toBe("Макеевка");
+  });
+
+  test("returns undefined when the city is absent", () => {
+    expect(extractTopnlabCity({ district: "Киевский" })).toBeUndefined();
+  });
+});
 
 describe("normalizePropertyDescription", () => {
   test("converts CRM line breaks to clean text paragraphs", () => {

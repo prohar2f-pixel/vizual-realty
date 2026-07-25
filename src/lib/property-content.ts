@@ -56,6 +56,14 @@ function textValue(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+export function extractTopnlabCity(
+  entity: Record<string, unknown>,
+): string | undefined {
+  const city = textValue(entity.city_name, entity.locality, entity.city)?.trim();
+  if (!city) return undefined;
+  return city.replace(/^(?:г\.?|город)\s*/iu, "").trim() || undefined;
+}
+
 function comparablePlace(value: string): string {
   return value
     .toLocaleLowerCase("ru")
