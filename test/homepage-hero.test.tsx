@@ -16,4 +16,7 @@ test("renders the approved homepage hero copy as two explicit lines", async () =
   expect(html).toContain(
     "Продажа квартир, домов, и земельных участков.<br/>Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.",
   );
+  expect(html).toContain(
+    'class="mx-auto text-base font-bold text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg"',
+  );
 });

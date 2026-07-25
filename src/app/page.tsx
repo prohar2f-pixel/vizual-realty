@@ -34,7 +34,7 @@ export default async function Home() {
           </h1>
 
           <div className="text-center drop-shadow-md">
-            <p className="mx-auto text-base font-medium text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
+            <p className="mx-auto text-base font-bold text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
               Продажа квартир, домов, и земельных участков.
               <br />
               Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.
