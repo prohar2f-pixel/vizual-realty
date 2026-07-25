@@ -1,205 +1,243 @@
-# Admin content and featured properties
+# Админ-панель для текстов и избранных объектов
 
-## Goal
+## Цель
 
-Create a small protected `/admin` area where one customer can:
+Создать небольшой защищённый раздел `/admin`, в котором один заказчик сможет:
 
-- select, order, and save one to three featured properties for the homepage;
-- edit approved static text fields for the Home, About, Team, and Contacts pages;
-- save content as a draft, preview it privately, publish it atomically, and restore the previous published version.
+- выбирать от одного до трёх объектов для раздела «Избранные объекты» на главной странице;
+- менять порядок выбранных объектов;
+- редактировать разрешённые статические тексты страниц «Главная», «О нас», «Команда» и «Контакты»;
+- сохранять тексты в черновик, просматривать их до публикации, публиковать одной операцией и возвращать предыдущую опубликованную версию.
 
-Property titles, prices, descriptions, photos, addresses, and other listing data remain owned by Topnlab.
+Названия, цены, описания, фотографии, адреса и остальные данные объектов по-прежнему поступают только из Topnlab.
 
-## Delivery stages
+## Этапы реализации
 
-The work is divided into independently testable stages:
+Работа делится на четыре независимо проверяемых этапа:
 
-1. Authentication and admin shell.
-2. Featured-property management.
-3. Structured content storage and public rendering.
-4. Draft preview, publishing, and rollback.
+1. Авторизация и общий интерфейс админ-панели.
+2. Управление избранными объектами.
+3. Хранение структурированных текстов и их вывод на публичных страницах.
+4. Черновик, закрытый предпросмотр, публикация и откат.
 
-Each completed stage must leave the public website functional and deployable.
+После каждого этапа публичный сайт должен оставаться рабочим и готовым к развёртыванию.
 
-## Authentication
+## Авторизация
 
-The system has one administrator and no user-registration flow.
+В системе будет один администратор. Регистрация пользователей не нужна.
 
-Server-only environment variables:
+Только на сервере хранятся переменные окружения:
 
-- `ADMIN_USERNAME`: exact login name;
-- `ADMIN_PASSWORD_HASH`: scrypt password hash with salt, never a plaintext password;
-- `ADMIN_SESSION_SECRET`: at least 32 random bytes encoded for storage;
-- `ADMIN_SESSION_TTL_HOURS`: optional session lifetime, default 12 hours.
+- `ADMIN_USERNAME` — логин администратора;
+- `ADMIN_PASSWORD_HASH` — хеш пароля scrypt с солью, а не пароль в открытом виде;
+- `ADMIN_SESSION_SECRET` — случайный секрет сессии длиной не менее 32 байт;
+- `ADMIN_SESSION_TTL_HOURS` — необязательный срок действия сессии, по умолчанию 12 часов;
+- `SITE_ORIGIN` — основной адрес сайта для проверки запросов.
 
-The login handler verifies the password with constant-time comparison and issues an encrypted, authenticated session cookie. The cookie is `HttpOnly`, `Secure` in production, `SameSite=Strict`, restricted to `/`, and expires with the server-side session timestamp. The payload contains only the administrator identity, issued-at time, expiry time, and a random nonce.
+Обработчик входа проверяет пароль сравнением с постоянным временем выполнения и создаёт зашифрованную и защищённую от подмены cookie-сессию. Cookie имеет параметры `HttpOnly`, `Secure` на рабочем сервере, `SameSite=Strict`, путь `/` и срок действия, совпадающий со временем окончания сессии. Внутри находятся только идентификатор администратора, время создания и окончания сессии и случайное значение.
 
-All `/admin/*` pages except `/admin/login` require a valid session. All admin mutation endpoints independently verify the session and reject cross-origin requests by checking `Origin` against the configured site origin. Login attempts use the existing rate-limit pattern and return one generic error for invalid credentials. Logout invalidates the browser cookie.
+Все страницы `/admin/*`, кроме `/admin/login`, требуют действующую сессию. Каждый обработчик изменения данных отдельно проверяет сессию и источник запроса: заголовок `Origin` должен совпадать с `SITE_ORIGIN`. Попытки входа ограничиваются существующим механизмом защиты от частых запросов. Для неверного логина и неверного пароля показывается одно общее сообщение. Выход удаляет cookie-сессию.
 
-No secret, password, hash, session value, or production credential is written to source control, logs, page markup, or client JavaScript.
+Секреты, пароль, хеш пароля и значения сессии нельзя записывать в Git, журналы, HTML страницы или клиентский JavaScript.
 
-## Data model
+## Модель данных
 
-### FeaturedProperty
+### Избранный объект — `FeaturedProperty`
 
-- `propertyId String @id`: relation to `Property.id` with cascade deletion;
-- `position Int @unique`: values 1, 2, or 3;
-- `updatedAt DateTime @updatedAt`.
+- `propertyId String @id` — ссылка на `Property.id` с автоматическим удалением записи при удалении объекта;
+- `position Int @unique` — позиция 1, 2 или 3;
+- `updatedAt DateTime @updatedAt` — дата последнего изменения.
 
-The public homepage reads featured properties ordered by `position`. It additionally requires `Property.isFeed = true`. If a property is deleted or hidden by Topnlab, it disappears from the public featured section without breaking the page.
+Главная страница получает избранные объекты в порядке `position` и дополнительно проверяет `Property.isFeed = true`. Если объект удалён или скрыт в Topnlab, он не выводится на публичной странице и не ломает её.
 
-The initial migration inserts the current three homepage properties, ordered by the existing `price desc` behavior. Before that initialization exists, the homepage retains the existing query as a compatibility fallback. After initialization, only the saved selection is shown, including when it contains fewer than three properties.
+При первом обновлении базы текущие три объекта на главной записываются как первоначальный выбор в прежнем порядке `price desc`. До завершения такой инициализации сохраняется совместимость: главная использует текущий запрос. После инициализации выводятся только сохранённые заказчиком объекты, даже если выбран один или два.
 
-Saving a selection is transactional: validate one to three unique, visible property IDs; delete the previous selection; insert the new rows with positions 1–3. Invalid or hidden objects are rejected with a clear admin-facing error.
+Сохранение выполняется одной транзакцией:
 
-### SiteContent
+1. проверить, что передано от одного до трёх уникальных ID;
+2. проверить существование и публичную видимость объектов;
+3. удалить прежний выбор;
+4. записать новые ID с позициями 1–3.
 
-One singleton row stores:
+Скрытые, удалённые или повторяющиеся объекты отклоняются с понятной ошибкой в админ-панели.
 
-- `id String @id`, fixed value `site`;
-- `draft Json`;
-- `published Json`;
-- `previousPublished Json?`;
-- `draftUpdatedAt DateTime`;
-- `publishedAt DateTime?`;
-- `updatedAt DateTime @updatedAt`.
+### Тексты сайта — `SiteContent`
 
-The JSON shape is versioned with `schemaVersion: 1`. Server-side validation parses every read and write. The structure contains only whitelisted plain-text fields grouped by page and section. Fields have explicit maximum lengths and required/optional rules. HTML, Markdown, scripts, URLs in ordinary text fields, arbitrary keys, and unbounded arrays are rejected.
+Одна запись с идентификатором `site` хранит:
 
-On first migration, the current text constants from the four pages seed both `draft` and `published`, so deployment causes no visible copy change.
+- `id String @id` — постоянное значение `site`;
+- `draft Json` — сохранённый черновик;
+- `published Json` — опубликованные тексты;
+- `previousPublished Json?` — предыдущая опубликованная версия;
+- `draftUpdatedAt DateTime` — дата сохранения черновика;
+- `publishedAt DateTime?` — дата публикации;
+- `updatedAt DateTime @updatedAt` — дата последнего изменения записи.
 
-## Editable content scope
+Формат JSON версионируется полем `schemaVersion: 1`. Сервер проверяет структуру при каждом чтении и сохранении. Разрешены только заранее определённые текстовые поля, сгруппированные по страницам и разделам. Для каждого поля задаются обязательность и максимальная длина.
 
-### Global header and footer
+Запрещены:
 
-- public navigation labels for Home, Catalogue, About, Team, and Contacts;
-- footer tagline, section headings, public address, phone, email, and copyright label;
-- visible labels change without changing their fixed destinations or link behavior.
+- произвольные дополнительные ключи;
+- HTML, JavaScript и Markdown;
+- неограниченные массивы;
+- ссылки в обычных текстовых полях;
+- значения длиннее установленного ограничения.
 
-### Home
+При первой миграции текущие тексты четырёх страниц записываются одновременно в `draft` и `published`. Поэтому само развёртывание админ-панели не меняет видимые тексты сайта.
 
-- hero heading and the two hero subtitle lines;
-- featured-section heading and catalogue link label;
-- Why Vizual heading, introduction, up to six benefit title/description pairs, and link label;
-- `200+` panel eyebrow, value, and caption.
+## Какие тексты можно редактировать
 
-### About
+### Общие шапка и подвал
 
-- page heading and introductory paragraphs;
-- section headings and paragraph copy;
-- approved metric labels and values;
-- call-to-action labels.
+- названия публичных разделов «Главная», «Каталог», «О нас», «Команда» и «Контакты»;
+- слоган и заголовки подвала;
+- публичный адрес, телефон, email и подпись об авторских правах;
+- видимые названия ссылок без возможности изменить их адреса и поведение.
 
-### Team
+### Главная страница
 
-- page heading, introduction, and section copy;
-- manager names, phones, email addresses, Telegram links, and photos remain code/data-managed in version 1 and are not free-form CMS fields.
+- главный заголовок и две строки подзаголовка;
+- заголовок «Избранные объекты» и подпись ссылки на каталог;
+- заголовок «Почему „Визуал“», вводный текст, до шести пар «название преимущества + описание» и подпись ссылки;
+- надпись, значение и описание блока `200+`.
 
-### Contacts
+### Страница «О нас»
 
-- page heading, introduction, office address, public phone, public email, working-hours text, and form/helper labels that are currently static;
-- manager contact records remain outside the CMS in version 1.
+- заголовок страницы и вводные абзацы;
+- заголовки разделов и тексты абзацев;
+- утверждённые числовые показатели и их подписи;
+- подписи кнопок и призывов к действию.
 
-Legal/system error messages, catalogue filters, property data, SEO metadata, and object-page content are outside version 1 unless explicitly listed above.
+### Страница «Команда»
 
-## Admin screens
+- заголовок страницы, вводный текст и тексты разделов;
+- имена, телефоны, email, Telegram и фотографии сотрудников в первой версии остаются в существующих данных и не редактируются как свободный текст.
+
+### Страница «Контакты»
+
+- заголовок и вводный текст;
+- адрес офиса, общий телефон, общий email и часы работы;
+- статические подписи формы и вспомогательные пояснения;
+- карточки и контакты отдельных сотрудников в первой версии остаются вне редактора.
+
+В первую версию не входят системные сообщения об ошибках, фильтры каталога, данные объектов, SEO-метаданные и тексты страниц отдельных объектов, если они не перечислены выше.
+
+## Экраны админ-панели
 
 ### `/admin/login`
 
-A compact form contains login, password, submit action, and one generic error area. Successful login redirects to `/admin/featured`. An authenticated visit redirects to the same destination without showing the form.
+Компактная форма содержит логин, пароль, кнопку входа и одно поле для общей ошибки. После успешного входа пользователь переходит на `/admin/featured`. Уже авторизованный пользователь сразу перенаправляется туда без повторного показа формы.
 
 ### `/admin/featured`
 
-The page shows:
+Экран содержит:
 
-- the saved one-to-three property cards in homepage order;
-- Move up, Move down, and Remove actions;
-- a search field matching property ID, title, address, or city;
-- paginated matching visible properties;
-- Add actions disabled when three are already selected;
-- a Save button and unsaved-change warning.
+- от одной до трёх сохранённых карточек в том порядке, в котором они отображаются на главной;
+- кнопки «Выше», «Ниже» и «Убрать»;
+- поиск по ID объекта, названию, адресу или городу;
+- постраничный список найденных публичных объектов;
+- кнопку «Добавить», которая отключается после выбора трёх объектов;
+- кнопку «Сохранить»;
+- предупреждение о несохранённых изменениях.
 
-Ordering uses buttons rather than drag-and-drop so it remains reliable on phones and keyboard accessible. Saving updates the public homepage immediately. This screen is independent from the content draft/publish workflow.
+Порядок меняется кнопками, а не перетаскиванием. Это надёжнее на телефоне и доступно с клавиатуры. Сохранение сразу обновляет публичный раздел «Избранные объекты». Этот экран не связан с черновиками текстов.
 
 ### `/admin/content`
 
-The page has tabs for Home, About, Team, and Contacts. Each field has a human-readable label, current value, length limit, and validation error. The page provides:
+Экран содержит вкладки «Главная», «О нас», «Команда» и «Контакты». У каждого поля есть понятное название, текущее значение, ограничение длины и место для ошибки.
 
-- Save draft;
-- Preview;
-- discard unsaved browser edits by reloading the last saved draft;
-- a warning before navigation when fields differ from the saved draft.
+Доступные действия:
+
+- «Сохранить черновик»;
+- «Предпросмотр»;
+- отмена несохранённых изменений путём возврата к последнему сохранённому черновику;
+- предупреждение при попытке закрыть страницу с несохранёнными изменениями.
 
 ### `/admin/preview`
 
-Preview renders the real public page components with draft content. It is available only to an authenticated administrator, sends `Cache-Control: private, no-store`, and cannot be indexed. A persistent admin bar identifies the page as a draft and provides Return to editing and Publish actions.
+Предпросмотр использует настоящие компоненты публичных страниц, но подставляет черновые тексты. Он доступен только авторизованному администратору, отправляет `Cache-Control: private, no-store` и закрыт от индексации.
 
-Publishing validates the complete draft and, in one transaction:
+Постоянная панель показывает, что открыта черновая версия, и содержит действия «Вернуться к правкам» и «Опубликовать».
 
-1. copies `published` to `previousPublished`;
-2. copies `draft` to `published`;
-3. updates `publishedAt`.
+Публикация проверяет весь черновик и в одной транзакции:
 
-Rollback requires confirmation and swaps `published` with `previousPublished`, preserving the version being replaced so the action can be reversed once.
+1. копирует `published` в `previousPublished`;
+2. копирует `draft` в `published`;
+3. обновляет `publishedAt`.
 
-## Public rendering
+Откат требует подтверждения и меняет местами `published` и `previousPublished`. Заменённая версия сохраняется, поэтому один откат можно отменить обратным откатом.
 
-Public pages load only validated `published` content. A shared server-side content loader:
+## Вывод на публичном сайте
 
-- returns the database value when it is valid;
-- falls back to version-controlled default content when the row is missing, the database read fails, or stored JSON fails validation;
-- records a concise server-side error without logging content or secrets.
+Публичные страницы используют только проверенные данные `published`. Общий серверный загрузчик текстов:
 
-This fallback ensures that admin-data failure does not make public pages unavailable. Public pages never read `draft` unless they are rendered through the authenticated preview path.
+- возвращает опубликованные данные из базы, если они корректны;
+- использует значения по умолчанию из кода, если запись ещё не создана, база временно недоступна или JSON не прошёл проверку;
+- записывает краткую техническую ошибку на сервере без содержимого текстов и секретов.
 
-## Validation and safety
+Такой резервный вариант не позволит сбою данных админ-панели отключить публичные страницы. Черновик никогда не выводится посетителям и используется только в авторизованном предпросмотре.
 
-- All mutations validate session, origin, payload shape, field lengths, and allowed keys.
-- Plain-text rendering relies on React escaping; no `dangerouslySetInnerHTML` is introduced.
-- Featured IDs must exist and be publicly visible.
-- A transaction prevents partial featured selection or partial publication.
-- Confirmations are required for Publish, Rollback, and Logout from unsaved forms.
-- Admin pages and APIs set no-index and no-store headers.
-- Error responses do not expose stack traces, database details, environment values, or credential validity.
+## Проверки и безопасность изменений
 
-## Error handling
+- Каждый запрос на изменение проверяет сессию, источник, структуру данных, длину полей и допустимые ключи.
+- React автоматически экранирует текст; `dangerouslySetInnerHTML` не добавляется.
+- ID избранных объектов должны существовать и быть публичными.
+- Транзакции не допускают частичного сохранения избранного или частичной публикации текстов.
+- Перед публикацией, откатом и выходом с несохранённой формой требуется подтверждение.
+- Страницы и API админ-панели получают заголовки `no-index` и `no-store`.
+- Ошибки не раскрывают стек вызовов, структуру базы, переменные окружения и причину неверных учётных данных.
 
-- Invalid login: generic credential error, with rate limiting.
-- Expired or invalid session: clear cookie and redirect to login.
-- Validation failure: keep entered form values and show field-specific messages.
-- Save conflict or database failure: keep the current published version unchanged and show a retryable error.
-- Selected property becomes hidden before save: reject the save and identify the unavailable card.
-- Selected property becomes hidden after save: omit it from the public homepage and mark it unavailable in admin.
-- Invalid stored content: render version-controlled defaults publicly and show a repair warning in admin.
+## Обработка ошибок
 
-## Testing
+- Неверный вход: одно общее сообщение и ограничение частоты попыток.
+- Истёкшая или испорченная сессия: cookie удаляется, пользователь возвращается на страницу входа.
+- Ошибка проверки поля: введённые данные сохраняются в форме, рядом с полем показывается понятное сообщение.
+- Ошибка базы или конфликт сохранения: опубликованная версия не меняется, администратор получает возможность повторить действие.
+- Объект скрыт до сохранения: сохранение отменяется, недоступная карточка явно отмечается.
+- Объект скрыт после сохранения: публичная главная его пропускает, а админ-панель отмечает как недоступный.
+- Повреждённые тексты в базе: публичный сайт показывает встроенные значения по умолчанию, а админ-панель предупреждает о необходимости исправления.
 
-Automated coverage includes:
+## Тестирование
 
-- password-hash verification, encrypted cookie round trip, expiry, tampering, and missing secrets;
-- route protection, generic login failure, rate limiting, logout, and origin validation;
-- featured selection uniqueness, maximum of three, ordering, hidden-property rejection, transactional replacement, initialization fallback, and public query order;
-- content schema acceptance/rejection, maximum lengths, unknown keys, and default fallback;
-- draft saving without public changes;
-- authenticated preview using draft content and public pages using published content;
-- atomic publish and one-step rollback;
-- server-rendered admin screens and public pages;
-- full existing test suite, lint assessment, and production build.
+Автоматические тесты проверяют:
 
-Deployment verification covers login, logout, mobile layout, featured selection, ordering, draft persistence, private preview, publication, rollback, public cache behavior, and unchanged Topnlab synchronization.
+- правильный и неправильный пароль;
+- создание, чтение, срок действия и защиту cookie от подмены;
+- поведение при отсутствии обязательных секретов;
+- защиту маршрутов, общее сообщение при ошибке входа, ограничение попыток, выход и проверку `Origin`;
+- уникальность избранных объектов, максимум три, порядок, отказ для скрытых объектов и транзакционную замену;
+- первоначальную совместимость и правильный порядок на публичной главной;
+- допустимые и недопустимые структуры текстов, длину полей, дополнительные ключи и резервные значения;
+- сохранение черновика без изменения публичного сайта;
+- использование черновика только в авторизованном предпросмотре;
+- атомарную публикацию и одношаговый откат;
+- серверный вывод страниц админ-панели и публичного сайта;
+- весь существующий набор тестов и production-сборку.
 
-## Deployment
+После развёртывания вручную проверяются:
 
-Deployment requires a Prisma schema update and database migration before restarting the application. The administrator username, password hash, session secret, TTL, and canonical site origin are configured directly on the server without printing their values or committing them.
+- вход и выход;
+- работа на телефоне;
+- выбор и порядок объектов;
+- сохранение черновика;
+- закрытый предпросмотр;
+- публикация и откат;
+- публичное кэширование;
+- отсутствие изменений в синхронизации Topnlab.
 
-The release initializes content from current site copy and initializes featured properties from the current homepage selection. After verification, the customer receives the `/admin/login` URL and credentials through a private channel outside Git and this task transcript.
+## Развёртывание
 
-## Out of scope
+Перед перезапуском приложения нужно применить изменение Prisma-схемы и миграцию базы. Логин администратора, хеш пароля, секрет сессии, срок сессии и основной адрес сайта задаются непосредственно на сервере. Их нельзя печатать в терминал, включать в отчёт или добавлять в Git.
 
-- Multiple administrators, roles, registration, password reset, or email login;
-- arbitrary HTML, Markdown, rich text, page-builder blocks, or layout editing;
-- image uploads or media-library management;
-- editing Topnlab property data;
-- editing manager records in version 1;
-- scheduled publication, more than one historical rollback version, or a full audit log;
-- drag-and-drop ordering.
+Миграция записывает текущие тексты сайта как черновую и опубликованную версии, а текущие три карточки — как первоначальный выбор избранного. После проверки заказчик получает адрес `/admin/login` и учётные данные по закрытому каналу вне Git и этой задачи.
+
+## Не входит в первую версию
+
+- несколько администраторов, роли, регистрация, восстановление пароля и вход по email;
+- произвольный HTML, Markdown, визуальный конструктор страниц и редактирование расположения блоков;
+- загрузка изображений и медиатека;
+- редактирование данных объектов Topnlab;
+- редактирование карточек сотрудников;
+- запланированная публикация;
+- более одной предыдущей опубликованной версии и полный журнал действий;
+- изменение порядка перетаскиванием.
