@@ -3,32 +3,48 @@ import { PropertyCard } from "@/components/PropertyCard";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { resolveManager } from "@/lib/manager-profiles";
 import { normalizeStoredPropertyDistrict } from "@/lib/property-content";
+import {
+  buildCatalogWhere,
+  type CatalogSearchParams,
+} from "@/lib/catalog-filters";
 
 export const dynamic = "force-dynamic";
 
-type SP = { rooms?: string; priceMax?: string; district?: string };
-
-export default async function CatalogPage({ searchParams }: { searchParams: Promise<SP> }) {
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<CatalogSearchParams>;
+}) {
   const sp = await searchParams;
 
-  const where: Record<string, unknown> = { isFeed: true };
-  if (sp.rooms) where.rooms = sp.rooms === "4" ? { gte: 4 } : Number(sp.rooms);
-  if (sp.priceMax) where.price = { lte: Number(sp.priceMax) };
-  if (sp.district) where.district = sp.district;
+  const where = buildCatalogWhere(sp);
 
-  const [items, districtRows, totalItems] = await Promise.all([
+  const [items, cityRows, districtRows, totalItems] = await Promise.all([
     db.property.findMany({ where, orderBy: { updatedAt: "desc" }, include: { agent: true } }),
     db.property.findMany({
-      where: { isFeed: true, district: { not: null } },
-      select: { district: true },
-      distinct: ["district"],
+      where: { isFeed: true, city: { not: null } },
+      select: { city: true },
+      distinct: ["city"],
     }),
+    sp.city
+      ? db.property.findMany({
+          where: { isFeed: true, city: sp.city, district: { not: null } },
+          select: { district: true },
+          distinct: ["district"],
+        })
+      : Promise.resolve([]),
     db.property.count({ where: { isFeed: true } }),
   ]);
-  const districts = districtRows
-    .map((row) => normalizeStoredPropertyDistrict(row.district))
-    .filter((district): district is string => Boolean(district))
+  const cities = [...new Set(cityRows.map((row) => row.city?.trim()).filter(Boolean))]
+    .filter((city): city is string => Boolean(city))
     .sort((left, right) => left.localeCompare(right, "ru"));
+  const districts = [
+    ...new Set(
+      districtRows
+        .map((row) => normalizeStoredPropertyDistrict(row.district))
+        .filter((district): district is string => Boolean(district)),
+    ),
+  ].sort((left, right) => left.localeCompare(right, "ru"));
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -38,7 +54,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           В каталоге: {totalItems} объектов
         </p>
       </div>
-      <CatalogFilters districts={districts} current={sp} />
+      <CatalogFilters cities={cities} districts={districts} current={sp} />
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
           Объекты не найдены. Попробуйте изменить фильтры.
