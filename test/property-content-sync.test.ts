@@ -37,6 +37,7 @@ test("content sync updates only address, description, and district", () => {
   ).toEqual({
     address: "ДНР, г. Донецк, Киевский р-н, ул. Мира, д. 7",
     description: "Строка 1\nСтрока 2",
+    city: "Донецк",
     district: "Киевский р-н",
   });
 });
@@ -83,6 +84,7 @@ test("content sync persists only usable address, description, and district after
     data: {
       address: "\u0414\u041d\u0420, \u0433. \u0414\u043e\u043d\u0435\u0446\u043a, \u041a\u0430\u043b\u0438\u043d\u0438\u043d\u0441\u043a\u0438\u0439 \u0440-\u043d, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7",
       description: "\u0421\u0442\u0440\u043e\u043a\u0430 1\n\u0421\u0442\u0440\u043e\u043a\u0430 2",
+      city: "\u0414\u043e\u043d\u0435\u0446\u043a",
       district: "\u041a\u0430\u043b\u0438\u043d\u0438\u043d\u0441\u043a\u0438\u0439 \u0440-\u043d",
     },
   });
@@ -90,6 +92,7 @@ test("content sync persists only usable address, description, and district after
     "description",
     "address",
     "description",
+    "city",
     "district",
   ]);
 });

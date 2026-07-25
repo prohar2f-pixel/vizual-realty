@@ -1,5 +1,6 @@
 import { db } from "../db";
 import {
+  extractTopnlabCity,
   extractTopnlabDistrict,
   formatTopnlabAddress,
   normalizePropertyDescription,
@@ -8,6 +9,7 @@ import { getEntities, getIds } from "./client";
 
 export function propertyContentUpdate(entity: Record<string, unknown>) {
   const address = formatTopnlabAddress(entity);
+  const city = extractTopnlabCity(entity);
   const district = extractTopnlabDistrict(entity);
   const description = normalizePropertyDescription(
     typeof entity.description === "string" ? entity.description : undefined,
@@ -16,6 +18,7 @@ export function propertyContentUpdate(entity: Record<string, unknown>) {
   return {
     ...(address ? { address } : {}),
     ...(description ? { description } : {}),
+    ...(city ? { city } : {}),
     ...(district ? { district } : {}),
   };
 }
