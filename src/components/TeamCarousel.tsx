@@ -6,11 +6,17 @@ export type TeamManager = {
   name: string;
   phone: string;
   phoneHref: string;
-  telegramUrl: string;
+  contactUrl: string;
+  contactLabel: string;
+  contactExternal: boolean;
   photoUrl: string;
 };
 
-function ManagerCard({ manager }: { manager: TeamManager }) {
+export function ManagerCard({ manager }: { manager: TeamManager }) {
+  const externalProps = manager.contactExternal
+    ? { target: "_blank" as const, rel: "noreferrer" }
+    : {};
+
   return (
     <article className="overflow-hidden rounded-2xl border-2 border-brand bg-white shadow-sm">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -35,12 +41,11 @@ function ManagerCard({ manager }: { manager: TeamManager }) {
         </div>
 
         <a
-          href={manager.telegramUrl}
-          target="_blank"
-          rel="noreferrer"
+          href={manager.contactUrl}
+          {...externalProps}
           className="mt-5 inline-flex w-full justify-center rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-on-brand transition hover:bg-brand-dim"
         >
-          Написать в Telegram
+          {manager.contactLabel}
         </a>
       </div>
     </article>

@@ -12,7 +12,9 @@ type Manager = {
   phone: string;
   phoneHref?: string;
   photoUrl?: string;
-  telegramUrl: string;
+  contactUrl: string;
+  contactLabel: string;
+  contactExternal: boolean;
 };
 
 const managers: Manager[] = [
@@ -22,7 +24,9 @@ const managers: Manager[] = [
     phone: "+7 (949) 537-55-65",
     phoneHref: "tel:+79495375565",
     photoUrl: "/managers/ayanot-elena.webp",
-    telegramUrl: "https://t.me/Lena_Katana",
+    contactUrl: "https://t.me/Lena_Katana",
+    contactLabel: "Написать менеджеру",
+    contactExternal: true,
   },
   {
     id: 2,
@@ -30,7 +34,9 @@ const managers: Manager[] = [
     phone: "+7 (949) 578-09-33",
     phoneHref: "tel:+79495780933",
     photoUrl: "/managers/banityuk-yulia.webp",
-    telegramUrl: "https://t.me/Lia_banituk",
+    contactUrl: "https://t.me/Lia_banituk",
+    contactLabel: "Написать менеджеру",
+    contactExternal: true,
   },
   {
     id: 3,
@@ -38,7 +44,9 @@ const managers: Manager[] = [
     phone: "+7 (949) 400-92-74",
     phoneHref: "tel:+79494009274",
     photoUrl: "/managers/khadzhinova-alina.webp",
-    telegramUrl: "https://t.me/alin_ka160",
+    contactUrl: "https://t.me/alin_ka160",
+    contactLabel: "Написать менеджеру",
+    contactExternal: true,
   },
   {
     id: 4,
@@ -46,7 +54,9 @@ const managers: Manager[] = [
     phone: "+7 (918) 295-60-93",
     phoneHref: "tel:+79182956093",
     photoUrl: "/managers/borokha-yuli.webp",
-    telegramUrl: "https://t.me/juliaborokha24",
+    contactUrl: "https://t.me/juliaborokha24",
+    contactLabel: "Написать менеджеру",
+    contactExternal: true,
   },
   {
     id: 5,
@@ -54,7 +64,9 @@ const managers: Manager[] = [
     phone: "+7 (949) 647-72-56",
     phoneHref: "tel:+79496477256",
     photoUrl: "/managers/melnik-sergey.webp",
-    telegramUrl: "https://t.me/sergeymcv",
+    contactUrl: "https://t.me/sergeymcv",
+    contactLabel: "Написать менеджеру",
+    contactExternal: true,
   },
   {
     id: 6,
@@ -62,14 +74,30 @@ const managers: Manager[] = [
     phone: "+7 (949) 715-80-77",
     phoneHref: "tel:+79497158077",
     photoUrl: "/managers/medvedeva-elena.webp",
-    telegramUrl: "https://t.me/Elen_md",
+    contactUrl: "https://t.me/Elen_md",
+    contactLabel: "Написать менеджеру",
+    contactExternal: true,
   },
-  ...Array.from({ length: 1 }, (_, index) => ({
-    id: index + 7,
-    name: "Фамилия Имя",
-    phone: "+7 (___) ___-__-__",
-    telegramUrl: "https://t.me/",
-  })),
+  {
+    id: 7,
+    name: "Ольга Кривуца",
+    phone: "+7 (978) 059-26-69",
+    phoneHref: "tel:+79780592669",
+    photoUrl: "/managers/olga-krivutsa.webp",
+    contactUrl: "mailto:olya_malina22@mail.ru",
+    contactLabel: "Написать на e-mail",
+    contactExternal: false,
+  },
+  {
+    id: 8,
+    name: "Тсаренко Виктория",
+    phone: "+7 (963) 532-80-09",
+    phoneHref: "tel:+79635328009",
+    photoUrl: "/managers/tsarenko-viktoria.webp",
+    contactUrl: "mailto:tsarenko.viktoria2000@mail.ru",
+    contactLabel: "Написать на e-mail",
+    contactExternal: false,
+  },
 ];
 
 function ManagerAvatar({
@@ -120,11 +148,11 @@ export default function ContactsPage() {
             Контакты менеджеров
           </h2>
 
-          <div className="mt-3 grid gap-1">
+          <div className="mt-3 grid gap-0.5">
             {managers.map((manager) => (
               <div
                 key={manager.id}
-                className="flex min-h-10 items-center gap-3 rounded-xl bg-stone-50 px-3 py-0.5"
+                className="flex min-h-10 items-center gap-3 rounded-xl bg-stone-50 px-3"
               >
                 <ManagerAvatar
                   name={manager.name}
@@ -148,13 +176,14 @@ export default function ContactsPage() {
                   )}
                 </div>
                 <a
-                  href={manager.telegramUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={manager.contactUrl}
+                  {...(manager.contactExternal
+                    ? { target: "_blank" as const, rel: "noreferrer" }
+                    : {})}
                   className="ml-auto shrink-0 rounded-lg border border-brand px-2.5 py-1.5 text-[11px] font-semibold leading-none text-brand transition hover:bg-brand hover:text-on-brand"
-                  aria-label={`Написать менеджеру ${manager.name} в Telegram`}
+                  aria-label={`${manager.contactLabel}: ${manager.name}`}
                 >
-                  Написать менеджеру
+                  {manager.contactLabel}
                 </a>
               </div>
             ))}

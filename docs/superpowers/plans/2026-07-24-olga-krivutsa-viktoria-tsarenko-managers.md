@@ -175,15 +175,18 @@ git commit -m "refactor: support manager email contact actions"
 Append:
 
 ```tsx
-import TeamPage from "../src/app/team/page";
+import { managers } from "../src/app/team/page";
 
-test("team page includes Olga and Viktoria e-mail actions", () => {
-  const html = renderToStaticMarkup(<TeamPage />);
-
-  expect(html).toContain("Ольга Кривуца");
-  expect(html).toContain("Тсаренко Виктория");
-  expect(html).toContain("mailto:olya_malina22@mail.ru");
-  expect(html).toContain("mailto:tsarenko.viktoria2000@mail.ru");
+test("Olga and Viktoria are seventh and eighth in the team carousel", () => {
+  expect(managers).toHaveLength(8);
+  expect(managers[6]).toMatchObject({
+    name: "Ольга Кривуца",
+    contactUrl: "mailto:olya_malina22@mail.ru",
+  });
+  expect(managers[7]).toMatchObject({
+    name: "Тсаренко Виктория",
+    contactUrl: "mailto:tsarenko.viktoria2000@mail.ru",
+  });
 });
 ```
 
@@ -191,7 +194,7 @@ test("team page includes Olga and Viktoria e-mail actions", () => {
 
 Run: `npm test -- test/team-manager-contact.test.tsx`
 
-Expected: FAIL because the two names and mail links are absent.
+Expected: FAIL because `managers` is not exported and the two managers are absent.
 
 - [ ] **Step 3: Migrate existing managers and append Olga and Viktoria**
 
