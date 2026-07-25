@@ -35,7 +35,9 @@ export default async function Home() {
 
           <div className="text-center drop-shadow-md">
             <p className="mx-auto text-base font-medium text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
-              Продажа квартир и домов. Большой каталог проверенных объектов и личный агент на каждом этапе сделки.
+              Продажа квартир, домов, и земельных участков.
+              <br />
+              Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-3 sm:gap-4">
               <Link
