@@ -96,29 +96,35 @@ export default async function Home() {
               Почему «Визуал»
             </h2>
             <p className="mt-4 leading-relaxed text-text/70">
-              Мы помогаем покупателям и продавцам недвижимости с заботой и вниманием к
-              деталям. Каждый объект проверен, а сопровождает вас опытный агент.
+              Мы поможем купить или продать недвижимость с заботой и вниманием к деталям.
+              Каждый объект проверен юристами, а сопроводит вашу сделку опытный агент.
             </p>
             <ul className="mt-8 space-y-6">
               <li className="flex items-start gap-4">
                 <span className="mt-2 h-px w-8 flex-none bg-accent" />
                 <div>
                   <div className="font-semibold text-text">Большой каталог</div>
-                  <div className="mt-0.5 text-sm text-text/60">Более 200 проверенных квартир и домов</div>
+                  <div className="mt-0.5 text-sm text-text/60">более 200 проверенных объектов</div>
                 </div>
               </li>
               <li className="flex items-start gap-4">
                 <span className="mt-2 h-px w-8 flex-none bg-accent" />
                 <div>
-                  <div className="font-semibold text-text">Личный агент</div>
-                  <div className="mt-0.5 text-sm text-text/60">На каждом объекте — опытный специалист</div>
+                  <div className="font-semibold text-text">Опытный агент</div>
+                  <div className="mt-0.5 text-sm text-text/60">на каждом этапе сделки, полное сопровождение</div>
                 </div>
               </li>
               <li className="flex items-start gap-4">
                 <span className="mt-2 h-px w-8 flex-none bg-accent" />
                 <div>
-                  <div className="font-semibold text-text">Честная сделка</div>
-                  <div className="mt-0.5 text-sm text-text/60">Сопровождаем от первого звонка до ключей</div>
+                  <div className="font-semibold text-text">Открытие ипотеки бесплатно</div>
+                </div>
+              </li>
+              <li className="flex items-start gap-4">
+                <span className="mt-2 h-px w-8 flex-none bg-accent" />
+                <div>
+                  <div className="font-semibold text-text">Сопровождение сделки под ключ</div>
+                  <div className="mt-0.5 text-sm text-text/60">от звонка до получения ключей</div>
                 </div>
               </li>
             </ul>
