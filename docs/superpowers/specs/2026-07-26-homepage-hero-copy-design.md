@@ -16,14 +16,15 @@ Line 2:
 
 ## Implementation
 
-Update only the hero heading in `src/app/page.tsx`. Insert an explicit JSX line break between the two approved sentences so the intended split does not depend on viewport width. Preserve the existing heading styles, surrounding layout, and all other page content.
+Update only the hero heading in `src/app/page.tsx`. Insert an explicit JSX line break between the two approved sentences so the intended split does not depend on viewport width. Render both lines with the Tailwind `font-bold` weight. Preserve the existing size, color, spacing, surrounding layout, and all other page content.
 
 ## Verification
 
 - Add or update a focused homepage rendering test that asserts both exact lines and their order.
+- Assert that the hero copy uses the `font-bold` class.
 - Run the focused test and the production build.
 - Visually verify the two-line heading on the live homepage after deployment.
 
 ## Scope
 
-No typography, spacing, responsive layout, metadata, or other copy changes are included.
+No typography changes other than the approved bold weight are included. Spacing, responsive layout, metadata, and other copy remain unchanged.
