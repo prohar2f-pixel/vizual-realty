@@ -21,7 +21,7 @@
 - В ветке разработки подготовлена закрытая админ-панель `/admin`; до отдельного подтверждения она не публикуется.
 - База текущей ветки перед реализацией админ-панели: `origin/main` на commit `9ab96c0`.
 - Безопасная точка отката до добавления Ольги и Виктории: `88c81a5`.
-- Последняя локальная проверка админ-ветки: 37 файлов тестов, 291 тест успешно; typecheck и production build успешно. Full lint сохраняет только прежний долг Topnlab: 6 ошибок и 5 предупреждений.
+- Последняя локальная проверка админ-ветки: 37 файлов тестов, 292 теста успешно; typecheck и production build успешно. Full lint сохраняет только прежний долг Topnlab: 6 ошибок и 5 предупреждений.
 
 ## Что уже работает
 
@@ -113,7 +113,7 @@ npm.cmd run start -- -p 3100
 
 Перед заявлением о готовности обязательно запустить тесты и build. В проекте есть старые lint-ошибки `no-explicit-any` в `src/lib/topnlab/client.ts`, `src/lib/topnlab/manager.ts`, `src/lib/topnlab/map.ts` и предупреждения в `test/map-realty-type.test.ts`; новые или изменённые файлы должны проходить lint без новых ошибок.
 
-Миграционная репетиция 26 июля 2026 года выполнена на отдельном временном loopback PostgreSQL 17 без чтения настоящего `.env` и production URL. Реальный fixed-action orchestrator `upgrade-existing` одной командой выполнил non-empty backup → строгий preflight → baseline resolve → deploy → seed дважды; результат: две миграции, одна строка `SiteContent`, восемь сотрудников, три избранных и три сохранённых legacy-объекта. `deploy-fresh` применил обе миграции и seed дважды к пустой базе: одна строка `SiteContent`, восемь сотрудников, ноль избранных при пустом каталоге. Повреждённая схема с `integer[]` вместо `text[]` создала backup, затем была остановлена до `_prisma_migrations` и admin-таблиц. Ранее отдельные реальные проверки также отклонили неправильные PK/FK, лишний обязательный столбец, частичную migration history и существующую admin-таблицу. Временный cluster и fixture-каталоги удалены.
+Миграционная репетиция 26 июля 2026 года выполнена на отдельном временном loopback PostgreSQL 17 без чтения настоящего `.env` и production URL. Реальный fixed-action orchestrator `upgrade-existing` одной командой выполнил non-empty backup → строгий preflight → baseline resolve → deploy → seed дважды; результат: две миграции, одна строка `SiteContent`, восемь сотрудников, три избранных и три сохранённых legacy-объекта. `deploy-fresh` применил обе миграции и seed дважды к пустой базе: одна строка `SiteContent`, восемь сотрудников, ноль избранных при пустом каталоге. Повреждённая схема с `integer[]` вместо `text[]` создала backup, затем была остановлена до `_prisma_migrations` и admin-таблиц. Повторная репетиция подтвердила, что upgrade запускает абсолютные `pg_dump`/`psql` только из доверенного системного PostgreSQL-каталога, не использует наследуемый `PATH`, а отсутствие такой пары останавливает процесс до backup и `resolve`. Ранее отдельные реальные проверки также отклонили неправильные PK/FK, лишний обязательный столбец, частичную migration history и существующую admin-таблицу. Временный cluster и fixture-каталоги удалены.
 
 ## Админ-панель и серверные данные
 
@@ -155,7 +155,7 @@ npm.cmd run sync:managers
 
 Продакшен-проект на сервере: `/home/vizual/app`, процесс PM2: `vizual`. Для фотографий использовать `/home/vizual/data/team-uploads`, для резервных копий — `/home/vizual/backups/<UTC-время>`.
 
-Порядок выпуска админ-панели: без загрузки `.env` в shell проверить чистый Git → записать предыдущий commit → получить `origin/main` → создать постоянную папку uploads → `npm ci` и `npm run build` → backup uploads → одной командой `scripts/run-postgres-tool.mjs upgrade-existing <backup-output>` выполнить DB backup, строгий preflight, baseline resolve, migrate deploy и seed дважды → `pm2 restart vizual` → smoke test публичных страниц и `/admin`. Fixed-action orchestrator читает только `DATABASE_URL` из защищённого `.env`, не принимает host/port/URL и формирует минимальные раздельные окружения для libpq и Prisma/seed. Точные команды без URL/пароля/хеша в аргументах или выводе находятся в `README.md`.
+Порядок выпуска админ-панели: без загрузки `.env` в shell проверить чистый Git → записать предыдущий commit → получить `origin/main` → создать постоянную папку uploads → `npm ci` и `npm run build` → backup uploads → одной командой `scripts/run-postgres-tool.mjs upgrade-existing <backup-output>` выполнить DB backup, строгий preflight, baseline resolve, migrate deploy и seed дважды → `pm2 restart vizual` → smoke test публичных страниц и `/admin`. Fixed-action orchestrator читает только `DATABASE_URL` из защищённого `.env`, не принимает host/port/URL, формирует минимальные раздельные окружения для libpq и Prisma/seed и запускает backup/preflight только через проверенные абсолютные `pg_dump`/`psql` из фиксированного системного PostgreSQL-каталога, без поиска по `PATH`. Точные команды без URL/пароля/хеша в аргументах или выводе находятся в `README.md`.
 
 Откат приложения выполняется переключением на записанный предыдущий commit, `npm ci`, повторной сборкой и рестартом PM2. Новая схема добавочная и совместима со старым кодом: миграцию назад не выполнять, published-данные и uploads не удалять. Восстановление backup БД/uploads допустимо только при подтверждённом повреждении данных, потому что оно уничтожит более новые изменения.
 
@@ -169,7 +169,7 @@ npm.cmd run sync:managers
 2. Получить ID Topnlab для Бороха Юли, Медведевой Елены, Ольги Кривуцы и Тсаренко Виктории.
 3. Заменить общие тексты в карточках команды на реальные опыт, достижения, число сделок и проданных объектов после получения данных от заказчика.
 4. При следующих изменениях каталога проверять, что фильтр «Район» содержит районы, а не города, и что адрес/описание совпадают с Topnlab по смыслу и переносам строк.
-5. `npm audit --omit=dev` после обновления Next.js и точечных совместимых overrides показывает 0 critical, 0 high и 4 moderate advisory только в Prisma CLI/tooling (`prisma` → `@prisma/dev` → `@hono/node-server`/`valibot`), а не в request runtime. Broad `npm audit fix` не запускался; пересмотреть эти advisory при следующем плановом обновлении Prisma.
+5. `npm audit --omit=dev` после обновления Next.js и точечных совместимых overrides показывает 0 critical, 0 high и 5 moderate-пакетов в одной Prisma tooling-цепочке (`@prisma/client` → `prisma` → `@prisma/dev` → `@hono/node-server`/`valibot`); исходные advisory относятся к встроенному серверу/валидации инструментов Prisma, а не к request runtime сайта. Broad `npm audit fix` не запускался; пересмотреть эти advisory при следующем плановом обновлении Prisma.
 
 ## Утверждённые принципы
 

@@ -1,16 +1,18 @@
 import {
   chmodSync,
+  existsSync,
   mkdtempSync,
   mkdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import {
   parseReleaseCommand,
   runReleaseAction,
+  validateTrustedPostgresBinDirectory,
 } from "../scripts/run-postgres-tool.mjs";
 
 const temporaryDirectories = [];
@@ -20,7 +22,17 @@ function releaseFixture() {
   temporaryDirectories.push(root);
   const envFile = join(root, ".env");
   const backupOutput = join(root, "backups", "database.dump");
+  const trustedRoot = join(root, "trusted-postgresql");
+  const trustedBin = join(trustedRoot, "17", "bin");
   mkdirSync(join(root, "backups"));
+  mkdirSync(trustedBin, { recursive: true });
+  const executableSuffix = process.platform === "win32" ? ".exe" : "";
+  const pgDump = join(trustedBin, `pg_dump${executableSuffix}`);
+  const psql = join(trustedBin, `psql${executableSuffix}`);
+  writeFileSync(pgDump, "fixture executable", { mode: 0o755 });
+  writeFileSync(psql, "fixture executable", { mode: 0o755 });
+  chmodSync(pgDump, 0o755);
+  chmodSync(psql, 0o755);
   writeFileSync(
     envFile,
     [
@@ -33,7 +45,16 @@ function releaseFixture() {
     { mode: 0o600 },
   );
   chmodSync(envFile, 0o600);
-  return { root, envFile, backupOutput };
+  return {
+    root,
+    envFile,
+    backupOutput,
+    postgresTools: validateTrustedPostgresBinDirectory(
+      trustedBin,
+      trustedRoot,
+    ),
+    trustedRoot,
+  };
 }
 
 afterEach(() => {
@@ -63,7 +84,7 @@ describe("fixed database release command", () => {
     const fixture = releaseFixture();
     const calls = [];
     const sourceEnvironment = {
-      PATH: "safe-test-path",
+      PATH: "poisoned-path-with-fake-pg-tools",
       PGHOSTADDR: "inherited-host-must-not-pass",
       PGSERVICE: "inherited-service-must-not-pass",
       TOPNLAB_KEY: "inherited-topnlab-must-not-pass",
@@ -77,6 +98,9 @@ describe("fixed database release command", () => {
       envFile: fixture.envFile,
       projectRoot: fixture.root,
       sourceEnvironment,
+      resolvePostgresTools() {
+        return fixture.postgresTools;
+      },
       async runner(call) {
         calls.push(structuredClone(call));
         if (calls.length === 1) {
@@ -98,6 +122,12 @@ describe("fixed database release command", () => {
       "tsx",
       "tsx",
     ]);
+    expect(calls[0].command).toBe(fixture.postgresTools.pgDump);
+    expect(calls[1].command).toBe(fixture.postgresTools.psql);
+    expect(isAbsolute(calls[0].command)).toBe(true);
+    expect(isAbsolute(calls[1].command)).toBe(true);
+    expect(calls[0].command.startsWith(fixture.trustedRoot)).toBe(true);
+    expect(calls[1].command.startsWith(fixture.trustedRoot)).toBe(true);
     expect(calls[0].args).toEqual([
       "--format=custom",
       `--file=${fixture.backupOutput}`,
@@ -144,7 +174,6 @@ describe("fixed database release command", () => {
 
     for (const call of calls.slice(0, 2)) {
       expect(call.env).toMatchObject({
-        PATH: "safe-test-path",
         PGHOST: "db.internal",
         PGPORT: "6432",
         PGDATABASE: "vizual",
@@ -153,11 +182,12 @@ describe("fixed database release command", () => {
         PGOPTIONS: "-c search_path=public",
       });
       expect(call.env).not.toHaveProperty("DATABASE_URL");
+      expect(call.env).not.toHaveProperty("PATH");
     }
 
     for (const call of calls.slice(2)) {
       expect(call.env).toEqual({
-        PATH: "safe-test-path",
+        PATH: "poisoned-path-with-fake-pg-tools",
         DATABASE_URL:
           "postgresql://release:p%40ss@db.internal:6432/vizual?schema=public",
       });
@@ -205,5 +235,29 @@ describe("fixed database release command", () => {
       },
     ]);
     expect(calls.every(({ env }) => !("PGHOSTADDR" in env))).toBe(true);
+  });
+
+  test("fails before backup or resolve when trusted PostgreSQL tools are absent", async () => {
+    const fixture = releaseFixture();
+    const calls = [];
+
+    await expect(
+      runReleaseAction({
+        action: "upgrade-existing",
+        backupOutput: fixture.backupOutput,
+        envFile: fixture.envFile,
+        projectRoot: fixture.root,
+        sourceEnvironment: { PATH: "poisoned-path" },
+        resolvePostgresTools() {
+          throw new Error("trusted PostgreSQL tools were not found");
+        },
+        async runner(call) {
+          calls.push(call);
+        },
+      }),
+    ).rejects.toThrow("trusted PostgreSQL tools were not found");
+
+    expect(calls).toEqual([]);
+    expect(existsSync(fixture.backupOutput)).toBe(false);
   });
 });

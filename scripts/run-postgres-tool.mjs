@@ -1,13 +1,25 @@
 import { spawn } from "node:child_process";
 import {
+  accessSync,
+  constants,
   existsSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
+  realpathSync,
   rmSync,
   statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { parseEnv } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -94,8 +106,11 @@ function minimalSystemEnvironment(sourceEnvironment) {
 
 function childEnvironments(connection, sourceEnvironment) {
   const system = minimalSystemEnvironment(sourceEnvironment);
+  const libpqSystem = Object.fromEntries(
+    Object.entries(system).filter(([key]) => key !== "PATH" && key !== "PATHEXT"),
+  );
   const libpq = {
-    ...system,
+    ...libpqSystem,
     PGHOST: connection.host,
     PGPORT: connection.port,
     PGDATABASE: connection.database,
@@ -115,6 +130,134 @@ function childEnvironments(connection, sourceEnvironment) {
       DATABASE_URL: connection.original,
     }),
   });
+}
+
+function pathIsInside(root, candidate) {
+  const pathFromRoot = relative(root, candidate);
+  return (
+    pathFromRoot === "" ||
+    (pathFromRoot !== ".." &&
+      !pathFromRoot.startsWith(`..${sep}`) &&
+      !isAbsolute(pathFromRoot))
+  );
+}
+
+function validateTrustedExecutable(
+  candidate,
+  expectedBasename,
+  trustedRoot,
+  platform,
+) {
+  if (!isAbsolute(candidate)) {
+    throw safeError(`${expectedBasename} candidate is not absolute`);
+  }
+  const resolvedCandidate = realpathSync(candidate);
+  if (!isAbsolute(resolvedCandidate)) {
+    throw safeError(`${expectedBasename} real path is not absolute`);
+  }
+  if (basename(resolvedCandidate).toLowerCase() !== expectedBasename.toLowerCase()) {
+    throw safeError(`${expectedBasename} real basename mismatch`);
+  }
+  if (!pathIsInside(trustedRoot, resolvedCandidate)) {
+    throw safeError(`${expectedBasename} escaped the trusted PostgreSQL root`);
+  }
+  const executableStat = statSync(resolvedCandidate);
+  if (!executableStat.isFile()) {
+    throw safeError(`${expectedBasename} is not a regular file`);
+  }
+  if (platform !== "win32") {
+    accessSync(resolvedCandidate, constants.X_OK);
+    if ((executableStat.mode & 0o111) === 0) {
+      throw safeError(`${expectedBasename} is not executable`);
+    }
+  }
+  return resolvedCandidate;
+}
+
+export function validateTrustedPostgresBinDirectory(
+  binDirectory,
+  trustedRoot,
+  platform = process.platform,
+) {
+  if (!isAbsolute(binDirectory) || !isAbsolute(trustedRoot)) {
+    throw safeError("trusted PostgreSQL paths must be absolute");
+  }
+  const resolvedRoot = realpathSync(trustedRoot);
+  const resolvedBin = realpathSync(binDirectory);
+  if (!pathIsInside(resolvedRoot, resolvedBin)) {
+    throw safeError("PostgreSQL bin directory escaped its trusted root");
+  }
+  const suffix = platform === "win32" ? ".exe" : "";
+  const pgDump = validateTrustedExecutable(
+    join(resolvedBin, `pg_dump${suffix}`),
+    `pg_dump${suffix}`,
+    resolvedRoot,
+    platform,
+  );
+  const psql = validateTrustedExecutable(
+    join(resolvedBin, `psql${suffix}`),
+    `psql${suffix}`,
+    resolvedRoot,
+    platform,
+  );
+  if (dirname(pgDump) !== dirname(psql)) {
+    throw safeError("trusted pg_dump and psql must come from the same bin directory");
+  }
+  return Object.freeze({ pgDump, psql, trustedRoot: resolvedRoot });
+}
+
+function versionDirectories(root) {
+  if (!existsSync(root)) return [];
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^\d+(?:\.\d+)*$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort((left, right) => {
+      const leftParts = left.split(".").map(Number);
+      const rightParts = right.split(".").map(Number);
+      const count = Math.max(leftParts.length, rightParts.length);
+      for (let index = 0; index < count; index += 1) {
+        const difference = (rightParts[index] ?? 0) - (leftParts[index] ?? 0);
+        if (difference !== 0) return difference;
+      }
+      return 0;
+    });
+}
+
+export function resolveTrustedPostgresTools(platform = process.platform) {
+  const candidates = [];
+  if (platform === "win32") {
+    const trustedRoot = "C:\\Program Files\\PostgreSQL";
+    for (const version of versionDirectories(trustedRoot)) {
+      candidates.push({
+        binDirectory: join(trustedRoot, version, "bin"),
+        trustedRoot,
+      });
+    }
+  } else if (platform === "linux") {
+    const versionedRoot = "/usr/lib/postgresql";
+    for (const version of versionDirectories(versionedRoot)) {
+      candidates.push({
+        binDirectory: join(versionedRoot, version, "bin"),
+        trustedRoot: versionedRoot,
+      });
+    }
+    candidates.push({ binDirectory: "/usr/bin", trustedRoot: "/usr/bin" });
+  } else {
+    throw safeError("trusted PostgreSQL tools are unsupported on this platform");
+  }
+
+  for (const candidate of candidates) {
+    try {
+      return validateTrustedPostgresBinDirectory(
+        candidate.binDirectory,
+        candidate.trustedRoot,
+        platform,
+      );
+    } catch {
+      // Try only the next fixed, trusted system location.
+    }
+  }
+  throw safeError("trusted PostgreSQL pg_dump/psql pair was not found");
 }
 
 function readProtectedDatabaseUrl(envFile) {
@@ -193,11 +336,14 @@ export async function runReleaseAction({
   projectRoot = DEFAULT_PROJECT_ROOT,
   sourceEnvironment = process.env,
   runner = spawnRunner,
+  resolvePostgresTools = resolveTrustedPostgresTools,
 }) {
   if (action !== "upgrade-existing" && action !== "deploy-fresh") {
     throw safeError("unknown release action");
   }
   const resolvedProjectRoot = resolve(projectRoot);
+  const postgresTools =
+    action === "upgrade-existing" ? resolvePostgresTools() : undefined;
   const resolvedEnvFile = resolve(envFile ?? join(process.cwd(), ".env"));
   const connection = parseDatabaseUrl(readProtectedDatabaseUrl(resolvedEnvFile));
   const environments = childEnvironments(connection, sourceEnvironment);
@@ -250,7 +396,7 @@ export async function runReleaseAction({
 
       await call(
         "pg_dump",
-        "pg_dump",
+        postgresTools.pgDump,
         ["--format=custom", `--file=${resolvedBackup}`],
         environments.libpq,
       );
@@ -263,7 +409,7 @@ export async function runReleaseAction({
       }
       await call(
         "psql",
-        "psql",
+        postgresTools.psql,
         [
           "-X",
           "--set",
