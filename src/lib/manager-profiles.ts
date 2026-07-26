@@ -1,3 +1,6 @@
+import { memberImageUrl } from "../components/site-content/member-view";
+import type { TeamMemberV1 } from "./site-content/schema";
+
 export type ManagerProfile = {
   id: string;
   name: string;
@@ -77,18 +80,26 @@ export function findManagerProfileByName(name: string | null | undefined): Manag
   return Object.values(managerProfiles).find((profile) => normalizeManagerName(profile.name) === normalizedName);
 }
 
-export function resolveManager(agent: CrmAgent | null | undefined): ResolvedManager | undefined {
-  const profile = getManagerProfile(agent?.id);
-
-  if (!agent || !profile) {
+export function resolveManager(
+  agent: CrmAgent | null | undefined,
+  members: TeamMemberV1[],
+): ResolvedManager | undefined {
+  if (!agent) {
     return undefined;
   }
+  const member = members.find(
+    (candidate) =>
+      candidate.isVisible && candidate.topnlabAgentId === agent.id,
+  );
+  if (!member) return undefined;
 
   return {
-    id: profile.id,
-    name: profile.name,
-    phone: profile.phone ?? agent.phone,
-    photo: profile.photo ?? agent.photoUrl,
-    ...(profile.telegram ? { telegram: profile.telegram } : {}),
+    id: agent.id,
+    name: member.name,
+    phone: member.phone ?? agent.phone,
+    photo: memberImageUrl(member.imageId, "card") ?? agent.photoUrl,
+    ...(member.telegram
+      ? { telegram: `https://t.me/${member.telegram}` }
+      : {}),
   };
 }

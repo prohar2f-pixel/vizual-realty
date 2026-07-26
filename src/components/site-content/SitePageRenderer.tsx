@@ -1,4 +1,4 @@
-import { db } from "../../lib/db";
+import { getFeaturedProperties } from "../../lib/featured";
 import type { SiteContentV1 } from "../../lib/site-content/schema";
 import { AboutPageView } from "./AboutPageView";
 import { ContactsPageView } from "./ContactsPageView";
@@ -15,11 +15,7 @@ export async function SitePageRenderer({ page, content, preview }: {
 }) {
   void preview;
   if (page === "home") {
-    const featured = await db.property.findMany({
-      where: { isFeed: true },
-      orderBy: { price: "desc" },
-      take: 3,
-    });
+    const featured = await getFeaturedProperties();
     return <HomePageView content={content.home} featured={featured} />;
   }
   if (page === "about") return <AboutPageView content={content.about} />;

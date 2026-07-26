@@ -11,10 +11,12 @@ import {
   normalizePropertyDescription,
   normalizeStoredPropertyDistrict,
 } from "@/lib/property-content";
+import { cache } from "react";
+import { getPublishedContent } from "../../../../lib/site-content/published";
 
-async function getProperty(id: string) {
+const getProperty = cache(async (id: string) => {
   return db.property.findUnique({ where: { id }, include: { agent: true } });
-}
+});
 
 export async function generateMetadata({
   params,
@@ -32,9 +34,12 @@ export async function generateMetadata({
 
 export default async function ObjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const p = await getProperty(id);
+  const [p, content] = await Promise.all([
+    getProperty(id),
+    getPublishedContent(),
+  ]);
   if (!p) notFound();
-  const manager = resolveManager(p.agent);
+  const manager = resolveManager(p.agent, content.team.members);
   const description = normalizePropertyDescription(p.description);
   const district = normalizeStoredPropertyDistrict(p.district);
 

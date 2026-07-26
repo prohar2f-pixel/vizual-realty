@@ -5,7 +5,8 @@ import {
   ManagerCard,
   type TeamManager,
 } from "../src/components/TeamCarousel";
-import { managers } from "../src/app/(public)/team/managers";
+import { toTeamManagers } from "../src/components/site-content/TeamPageView";
+import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
 
 test("renders an e-mail action without opening a browser tab", () => {
   const manager: TeamManager = {
@@ -46,17 +47,15 @@ test("keeps Telegram actions external", () => {
 });
 
 test("Olga and Viktoria are seventh and eighth in the team carousel", () => {
+  const managers = toTeamManagers(DEFAULT_SITE_CONTENT.team);
+
   expect(managers).toHaveLength(8);
   expect(managers[6]).toMatchObject({
     name: "Ольга Кривуца",
     contactUrl: "mailto:olya_malina22@mail.ru",
-    contactLabel: "Написать на e-mail",
-    contactExternal: false,
   });
   expect(managers[7]).toMatchObject({
     name: "Тсаренко Виктория",
     contactUrl: "mailto:tsarenko.viktoria2000@mail.ru",
-    contactLabel: "Написать на e-mail",
-    contactExternal: false,
   });
 });

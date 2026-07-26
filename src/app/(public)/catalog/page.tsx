@@ -7,6 +7,7 @@ import {
   buildCatalogWhere,
   type CatalogSearchParams,
 } from "@/lib/catalog-filters";
+import { getPublishedContent } from "../../../lib/site-content/published";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,13 @@ export default async function CatalogPage({
 }: {
   searchParams: Promise<CatalogSearchParams>;
 }) {
+  const contentPromise = getPublishedContent();
   const sp = await searchParams;
 
   const where = buildCatalogWhere(sp);
 
-  const [items, cityRows, districtRows, totalItems] = await Promise.all([
+  const [content, items, cityRows, districtRows, totalItems] = await Promise.all([
+    contentPromise,
     db.property.findMany({ where, orderBy: { updatedAt: "desc" }, include: { agent: true } }),
     db.property.findMany({
       where: { isFeed: true, city: { not: null } },
@@ -71,7 +74,7 @@ export default async function CatalogPage({
               area={p.area}
               district={p.district}
               photo={p.photos[0] ?? null}
-              manager={resolveManager(p.agent)}
+              manager={resolveManager(p.agent, content.team.members)}
             />
           ))}
         </div>

@@ -10,7 +10,7 @@ export type FeaturedPropertyView = {
   rooms: number | null;
   area: number | null;
   district: string | null;
-  photos: string[];
+  photo: string | null;
 };
 
 export function HomePageView({
@@ -87,7 +87,7 @@ export function HomePageView({
                 rooms={property.rooms}
                 area={property.area}
                 district={property.district}
-                photo={property.photos[0] ?? null}
+                photo={property.photo}
               />
             ))}
           </div>

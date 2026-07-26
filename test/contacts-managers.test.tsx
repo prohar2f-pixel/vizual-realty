@@ -1,10 +1,18 @@
-import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import ContactsPage from "../src/app/(public)/contacts/page";
+import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
 
-test("contacts page shows Olga and Viktoria instead of a placeholder", () => {
-  const html = renderToStaticMarkup(<ContactsPage />);
+const getPublishedContent = vi.hoisted(() => vi.fn());
+
+vi.mock("../src/lib/site-content/published", () => ({ getPublishedContent }));
+
+beforeEach(() => {
+  getPublishedContent.mockResolvedValue(structuredClone(DEFAULT_SITE_CONTENT));
+});
+
+test("contacts page shows Olga and Viktoria instead of a placeholder", async () => {
+  const html = renderToStaticMarkup(await ContactsPage());
 
   expect(html).toContain("Ольга Кривуца");
   expect(html).toContain("+7 (978) 059-26-69");
@@ -17,8 +25,8 @@ test("contacts page shows Olga and Viktoria instead of a placeholder", () => {
   expect(html).not.toContain("Фамилия Имя");
 });
 
-test("contacts page preserves approved Telegram links", () => {
-  const html = renderToStaticMarkup(<ContactsPage />);
+test("contacts page preserves approved Telegram links", async () => {
+  const html = renderToStaticMarkup(await ContactsPage());
 
   expect(html).toContain("https://t.me/Lena_Katana");
   expect(html).toContain("https://t.me/juliaborokha24");

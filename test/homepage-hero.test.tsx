@@ -1,14 +1,22 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import Home from "../src/app/(public)/page";
+import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
 
-vi.mock("@/lib/db", () => ({
-  db: { property: { findMany: vi.fn().mockResolvedValue([]) } },
-}));
+const getPublishedContent = vi.hoisted(() => vi.fn());
+const getFeaturedProperties = vi.hoisted(() => vi.fn());
+
+vi.mock("../src/lib/site-content/published", () => ({ getPublishedContent }));
+vi.mock("../src/lib/featured", () => ({ getFeaturedProperties }));
 
 vi.mock("../src/components/PropertyCard", () => ({
   PropertyCard: () => null,
 }));
+
+beforeEach(() => {
+  getPublishedContent.mockResolvedValue(structuredClone(DEFAULT_SITE_CONTENT));
+  getFeaturedProperties.mockResolvedValue([]);
+});
 
 test("renders the approved homepage hero copy as two explicit lines", async () => {
   const html = renderToStaticMarkup(await Home());

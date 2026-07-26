@@ -62,13 +62,16 @@ class InMemoryFeaturedClient {
   photoQueryCalls = 0;
   lastFeaturedFindManyArgs: Record<string, unknown> | null = null;
   private latestPhotoIds: string[] = [];
+  readonly siteContentExists: boolean;
 
   constructor(
     properties: PropertyFixture[],
     featured: Array<{ propertyId: string; position: number }> = [],
+    siteContentExists = true,
   ) {
     this.properties = properties;
     this.featured = featured;
+    this.siteContentExists = siteContentExists;
   }
 
   property = {
@@ -87,6 +90,10 @@ class InMemoryFeaturedClient {
     findMany(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
     deleteMany(): Promise<{ count: number }>;
     createMany(args: { data: Array<{ propertyId: string; position: number }> }): Promise<{ count: number }>;
+  };
+
+  siteContent = {
+    findUnique: async () => (this.siteContentExists ? { id: "site" } : null),
   };
 
   async $queryRaw<T>(): Promise<T> {
@@ -138,6 +145,11 @@ class InMemoryFeaturedClient {
             return false;
           }),
         );
+      }
+      if (
+        (args.orderBy as { price?: string } | undefined)?.price === "desc"
+      ) {
+        rows = [...rows].sort((left, right) => right.price - left.price);
       }
       const skip = Number(args.skip ?? 0);
       const take = Number(args.take ?? rows.length);
@@ -197,8 +209,13 @@ class InMemoryFeaturedClient {
 function client(
   properties: PropertyFixture[],
   featured: Array<{ propertyId: string; position: number }> = [],
+  siteContentExists = true,
 ) {
-  return new InMemoryFeaturedClient(properties, featured).initialize();
+  return new InMemoryFeaturedClient(
+    properties,
+    featured,
+    siteContentExists,
+  ).initialize();
 }
 
 describe("featured property replacement", () => {
@@ -300,6 +317,87 @@ describe("featured property reads", () => {
       { id: "visible", isFeed: true },
       { id: "hidden", isFeed: false },
     ]);
+  });
+
+  test("uses the legacy top-three query only before SiteContent initialization", async () => {
+    const database = client(
+      [
+        property("low", { price: 1_000_000 }),
+        property("high", { price: 9_000_000 }),
+        property("middle", { price: 5_000_000 }),
+        property("fourth", { price: 500_000 }),
+      ],
+      [],
+      false,
+    );
+
+    const items = await getFeaturedProperties(database);
+
+    expect(items.map((item) => item.id)).toEqual(["high", "middle", "low"]);
+  });
+
+  test("treats an empty selection after SiteContent initialization as intentional", async () => {
+    const database = client(
+      [property("high", { price: 9_000_000 })],
+      [],
+      true,
+    );
+
+    await expect(getFeaturedProperties(database)).resolves.toEqual([]);
+  });
+
+  test("never supplements a saved one-item selection with automatic properties", async () => {
+    const database = client(
+      [
+        property("saved", { price: 1_000_000 }),
+        property("automatic", { price: 9_000_000 }),
+      ],
+      [{ propertyId: "saved", position: 1 }],
+      true,
+    );
+
+    const items = await getFeaturedProperties(database);
+
+    expect(items.map((item) => item.id)).toEqual(["saved"]);
+  });
+
+  test("does not auto-fill after a saved property becomes hidden", async () => {
+    const database = client(
+      [
+        property("saved-hidden", { isFeed: false }),
+        property("automatic", { price: 9_000_000 }),
+      ],
+      [{ propertyId: "saved-hidden", position: 1 }],
+      true,
+    );
+
+    await expect(getFeaturedProperties(database)).resolves.toEqual([]);
+  });
+
+  test("returns an empty safe state for a database initialization outage", async () => {
+    const database = client([property("automatic")], [], false);
+    database.featuredProperty.findMany = async () => {
+      const error = new Error("private database connection detail");
+      error.name = "PrismaClientInitializationError";
+      throw error;
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(getFeaturedProperties(database)).resolves.toEqual([]);
+    expect(errorSpy).toHaveBeenCalledWith("featured_properties_fallback");
+
+    errorSpy.mockRestore();
+  });
+
+  test("does not hide programming errors behind the featured empty state", async () => {
+    const database = client([property("automatic")], [], false);
+    database.featuredProperty.findMany = async () => {
+      throw new TypeError("broken featured mapping");
+    };
+
+    await expect(getFeaturedProperties(database)).rejects.toThrow(
+      "broken featured mapping",
+    );
   });
 });
 

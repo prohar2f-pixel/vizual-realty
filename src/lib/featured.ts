@@ -47,23 +47,12 @@ export class FeaturedValidationError extends Error {
   }
 }
 
+type CardPropertyRow = Omit<PropertyCardData, "photo">;
 type FeaturedPropertyRow = {
-  property: {
-    id: string;
-    shortId: number | null;
-    title: string;
-    price: number;
-    rooms: number | null;
-    area: number | null;
-    city: string | null;
-    district: string | null;
-    address: string | null;
-    isFeed: boolean;
-    agent: PropertyCardData["agent"];
-  };
+  property: CardPropertyRow & { isFeed: boolean };
 };
 
-type SearchPropertyRow = Omit<PropertyCardData, "photo">;
+type SearchPropertyRow = CardPropertyRow;
 
 type FeaturedDataClient = {
   property: {
@@ -74,6 +63,9 @@ type FeaturedDataClient = {
     findMany(args: unknown): Promise<unknown>;
     deleteMany(args?: unknown): Promise<unknown>;
     createMany(args: unknown): Promise<unknown>;
+  };
+  siteContent: {
+    findUnique(args: unknown): Promise<unknown>;
   };
   $queryRaw<T>(query: unknown): Promise<T>;
   $transaction<T>(run: (transaction: unknown) => Promise<T>): Promise<T>;
@@ -104,7 +96,7 @@ function asClient(client: unknown): FeaturedDataClient {
 }
 
 function toCard(
-  property: FeaturedPropertyRow["property"],
+  property: CardPropertyRow,
   photo: string | null,
 ): PropertyCardData {
   return {
@@ -168,8 +160,19 @@ async function readFeatured(
 export async function getFeaturedProperties(
   client: unknown = db,
 ): Promise<PropertyCardData[]> {
-  const rows = await readFeatured(true, client);
-  return rows.map((item) => ({
+  try {
+    return await readPublicFeatured(client);
+  } catch (error) {
+    if (!isDatabaseAvailabilityError(error)) throw error;
+    console.error("featured_properties_fallback");
+    return [];
+  }
+}
+
+function toPublicCards(
+  rows: AdminFeaturedPropertyCardData[],
+): PropertyCardData[] {
+  return rows.filter((item) => item.isFeed).map((item) => ({
     id: item.id,
     shortId: item.shortId,
     title: item.title,
@@ -182,6 +185,57 @@ export async function getFeaturedProperties(
     photo: item.photo,
     agent: item.agent,
   }));
+}
+
+async function readLegacyTopThree(
+  database: FeaturedDataClient,
+): Promise<PropertyCardData[]> {
+  const rows = (await database.property.findMany({
+    where: { isFeed: true },
+    orderBy: { price: "desc" },
+    take: 3,
+    select: cardSelection,
+  })) as SearchPropertyRow[];
+  const photos = await readCoverPhotos(
+    database,
+    rows.map(({ id }) => id),
+  );
+  return rows.map((property) =>
+    toCard(property, photos.get(property.id) ?? null),
+  );
+}
+
+async function readPublicFeatured(client: unknown) {
+  const database = asClient(client);
+  const saved = await readFeatured(false, database);
+  if (saved.length > 0) return toPublicCards(saved);
+
+  const content = await database.siteContent.findUnique({
+    where: { id: "site" },
+    select: { id: true },
+  });
+  if (content) return [];
+
+  return readLegacyTopThree(database);
+}
+
+function isDatabaseAvailabilityError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  if (error.name === "PrismaClientInitializationError") return true;
+  if (error.name !== "PrismaClientKnownRequestError") return false;
+  const code = (error as Error & { code?: unknown }).code;
+  return typeof code === "string" && [
+    "P1000",
+    "P1001",
+    "P1002",
+    "P1003",
+    "P1008",
+    "P1009",
+    "P1010",
+    "P1011",
+    "P1013",
+    "P1017",
+  ].includes(code);
 }
 
 export function getAdminFeaturedProperties(

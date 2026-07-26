@@ -1,16 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { SiteContentV1 } from "../lib/site-content/schema";
 import { MobileNav } from "./MobileNav";
 
-const nav = [
-  { href: "/", label: "Главная" },
-  { href: "/catalog", label: "Каталог" },
-  { href: "/about", label: "О нас" },
-  { href: "/team", label: "Команда" },
-  { href: "/contacts", label: "Контакты" },
-];
+function navigationItems(content: SiteContentV1["navigation"]) {
+  return [
+    { href: "/", label: content.home },
+    { href: "/catalog", label: content.catalog },
+    { href: "/about", label: content.about },
+    { href: "/team", label: content.team },
+    { href: "/contacts", label: content.contacts },
+  ];
+}
 
-export function Header() {
+export function Header({ navigation }: {
+  navigation: SiteContentV1["navigation"];
+}) {
+  const nav = navigationItems(navigation);
   return (
     <header className="relative sticky top-0 z-50 border-b border-black/10 bg-brand text-on-brand">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
@@ -43,7 +49,7 @@ export function Header() {
           ))}
         </nav>
 
-        <MobileNav />
+        <MobileNav navigation={navigation} />
       </div>
     </header>
   );

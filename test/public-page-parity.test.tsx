@@ -1,17 +1,25 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import AboutPage from "../src/app/(public)/about/page";
 import ContactsPage from "../src/app/(public)/contacts/page";
 import Home from "../src/app/(public)/page";
 import TeamPage from "../src/app/(public)/team/page";
+import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
 
-vi.mock("@/lib/db", () => ({
-  db: { property: { findMany: vi.fn().mockResolvedValue([]) } },
-}));
+const getPublishedContent = vi.hoisted(() => vi.fn());
+const getFeaturedProperties = vi.hoisted(() => vi.fn());
+
+vi.mock("../src/lib/site-content/published", () => ({ getPublishedContent }));
+vi.mock("../src/lib/featured", () => ({ getFeaturedProperties }));
 
 vi.mock("../src/components/PropertyCard", () => ({
   PropertyCard: () => null,
 }));
+
+beforeEach(() => {
+  getPublishedContent.mockResolvedValue(structuredClone(DEFAULT_SITE_CONTENT));
+  getFeaturedProperties.mockResolvedValue([]);
+});
 
 test("keeps the pre-preview Home hero and company copy", async () => {
   const html = renderToStaticMarkup(await Home());
@@ -24,8 +32,8 @@ test("keeps the pre-preview Home hero and company copy", async () => {
   expect(html).toContain("Сопровождение сделки под ключ");
 });
 
-test("keeps the pre-preview Team heading and introduction", () => {
-  const html = renderToStaticMarkup(<TeamPage />);
+test("keeps the pre-preview Team heading and introduction", async () => {
+  const html = renderToStaticMarkup(await TeamPage());
 
   expect(html).toContain(">Наша команда</h1>");
   expect(html).toContain(
@@ -33,16 +41,16 @@ test("keeps the pre-preview Team heading and introduction", () => {
   );
 });
 
-test("keeps the pre-preview About call-to-action sentence capitalization", () => {
-  const html = renderToStaticMarkup(<AboutPage />);
+test("keeps the pre-preview About call-to-action sentence capitalization", async () => {
+  const html = renderToStaticMarkup(await AboutPage());
 
   expect(html).toMatch(
     /В разделе <a [^>]*>КОМАНДА<\/a> Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝/,
   );
 });
 
-test("keeps the pre-preview Contacts labels and Yandex destination", () => {
-  const html = renderToStaticMarkup(<ContactsPage />);
+test("keeps the pre-preview Contacts labels and Yandex destination", async () => {
+  const html = renderToStaticMarkup(await ContactsPage());
 
   expect(html).toContain("Контакты менеджеров");
   expect(html).toContain("г. Донецк, ул. 50 лет СССР, 142");

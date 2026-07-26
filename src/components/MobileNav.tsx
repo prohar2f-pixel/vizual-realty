@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { SiteContentV1 } from "../lib/site-content/schema";
 
-const nav = [
-  { href: "/", label: "Главная" },
-  { href: "/catalog", label: "Каталог" },
-  { href: "/about", label: "О нас" },
-  { href: "/team", label: "Команда" },
-  { href: "/contacts", label: "Контакты" },
-];
-
-export function MobileNav() {
+export function MobileNav({ navigation }: {
+  navigation: SiteContentV1["navigation"];
+}) {
   const [open, setOpen] = useState(false);
+  const nav = [
+    { href: "/", label: navigation.home },
+    { href: "/catalog", label: navigation.catalog },
+    { href: "/about", label: navigation.about },
+    { href: "/team", label: navigation.team },
+    { href: "/contacts", label: navigation.contacts },
+  ];
 
   return (
     <div className="sm:hidden">

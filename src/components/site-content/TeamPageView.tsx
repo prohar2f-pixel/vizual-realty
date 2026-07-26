@@ -2,8 +2,10 @@ import { TeamCarousel, type TeamManager } from "../TeamCarousel";
 import type { SiteContentV1 } from "../../lib/site-content/schema";
 import { memberContact, memberImageUrl, phoneHref } from "./member-view";
 
-export function TeamPageView({ content }: { content: SiteContentV1["team"] }) {
-  const managers: TeamManager[] = content.members
+export function toTeamManagers(
+  content: SiteContentV1["team"],
+): TeamManager[] {
+  return content.members
     .filter((member) => member.isVisible)
     .map((member) => {
       const contact = memberContact(member);
@@ -19,6 +21,10 @@ export function TeamPageView({ content }: { content: SiteContentV1["team"] }) {
         description: member.role,
       };
     });
+}
+
+export function TeamPageView({ content }: { content: SiteContentV1["team"] }) {
+  const managers = toTeamManagers(content);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">

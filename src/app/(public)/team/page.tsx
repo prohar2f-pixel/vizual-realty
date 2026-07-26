@@ -1,8 +1,9 @@
 import { TeamPageView } from "../../../components/site-content/TeamPageView";
-import { DEFAULT_SITE_CONTENT } from "../../../lib/site-content/defaults";
+import { getPublishedContent } from "../../../lib/site-content/published";
 
 export const metadata = { title: "Наша команда" };
 
-export default function TeamPage() {
-  return <TeamPageView content={DEFAULT_SITE_CONTENT.team} />;
+export default async function TeamPage() {
+  const content = await getPublishedContent();
+  return <TeamPageView content={content.team} />;
 }

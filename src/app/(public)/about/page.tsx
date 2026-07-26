@@ -1,8 +1,9 @@
 import { AboutPageView } from "../../../components/site-content/AboutPageView";
-import { DEFAULT_SITE_CONTENT } from "../../../lib/site-content/defaults";
+import { getPublishedContent } from "../../../lib/site-content/published";
 
 export const metadata = { title: "О нас" };
 
-export default function AboutPage() {
-  return <AboutPageView content={DEFAULT_SITE_CONTENT.about} />;
+export default async function AboutPage() {
+  const content = await getPublishedContent();
+  return <AboutPageView content={content.about} />;
 }
