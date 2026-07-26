@@ -35,6 +35,7 @@ const TEST_SESSION: AdminSession = {
   nonce: "test-nonce",
 };
 const TEN_MIB = 10 * 1024 * 1024;
+const ELEVEN_MIB = 11 * 1024 * 1024;
 const OLD = new Date("2026-07-24T00:00:00.000Z");
 const NOW = new Date("2026-07-26T00:00:00.000Z");
 const UUIDS = {
@@ -369,7 +370,7 @@ describe("team image upload API", () => {
   test.each([
     ["absent Content-Length", undefined],
     ["lying Content-Length", "1"],
-  ])("hard-caps 10 MiB + 1 streamed bytes before formData with %s", async (_case, contentLength) => {
+  ])("hard-caps 11 MiB + 1 streamed bytes before formData with %s", async (_case, contentLength) => {
     const store = vi.fn();
     const handler = createTeamImageUploadHandler({
       readSession: async () => TEST_SESSION,
@@ -385,7 +386,7 @@ describe("team image upload API", () => {
           ? {}
           : { "content-length": contentLength }),
       },
-      body: Buffer.alloc(TEN_MIB + 1),
+      body: Buffer.alloc(ELEVEN_MIB + 1),
     });
     const formData = vi.spyOn(Request.prototype, "formData");
 
@@ -398,6 +399,37 @@ describe("team image upload API", () => {
     });
     expect(formData).not.toHaveBeenCalled();
     expect(store).not.toHaveBeenCalled();
+  });
+
+  test("allows multipart overhead above 10 MiB while keeping the file itself at 10 MiB", async () => {
+    const store = vi.fn(async (
+      bytes: Uint8Array,
+      claimedType: string,
+    ) => {
+      void bytes;
+      void claimedType;
+      return {
+        id: UUIDS.draft,
+        url: `/api/team-images/${UUIDS.draft}`,
+      };
+    });
+    const handler = createTeamImageUploadHandler({
+      readSession: async () => TEST_SESSION,
+      readSiteOrigin: () => TEST_ORIGIN,
+      store,
+    });
+
+    const response = await handler(
+      uploadRequest(
+        new File([Buffer.alloc(TEN_MIB)], "exact-limit.png", {
+          type: "image/png",
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(201);
+    expect(store).toHaveBeenCalledOnce();
+    expect(store.mock.calls[0][0]).toHaveLength(TEN_MIB);
   });
 
   test("requires multipart with exactly one file and returns a new imageId", async () => {

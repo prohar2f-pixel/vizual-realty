@@ -1,4 +1,5 @@
 import type { SiteContentV1, TeamMemberV1 } from "../../lib/site-content/schema";
+import { LeadForm } from "../LeadForm";
 import { memberContact, memberImageUrl, phoneHref } from "./member-view";
 
 function ManagerAvatar({ member }: { member: TeamMemberV1 }) {
@@ -36,10 +37,16 @@ export function ContactsPageView({ content, members, mapSearchAddress }: {
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-12">
       <h1 className="font-display text-3xl font-bold text-brand">{content.title}</h1>
+      {content.introduction ? (
+        <p className="mt-3 max-w-3xl text-text/70">{content.introduction}</p>
+      ) : null}
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(330px,1fr)_360px_430px]">
         <section className="h-[420px] rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
           <h2 className="font-display text-xl font-bold text-brand">{content.managersTitle}</h2>
-          <div className="mt-3 grid gap-0.5">
+          <div
+            aria-label="Список сотрудников"
+            className="mt-3 grid max-h-[344px] gap-0.5 overflow-y-auto overscroll-contain pr-1"
+          >
             {visibleMembers.length > 0 ? visibleMembers.map((member) => {
               const contact = memberContact(member);
               const memberPhoneHref = phoneHref(member.phone);
@@ -85,6 +92,14 @@ export function ContactsPageView({ content, members, mapSearchAddress }: {
               <dt className="text-sm text-stone-500">{content.addressLabel}</dt>
               <dd className="mt-1 font-medium">{content.address}</dd>
             </div>
+            {content.businessHours ? (
+              <div>
+                <dt className="text-sm text-stone-500">
+                  {content.businessHoursLabel}
+                </dt>
+                <dd className="mt-1 font-medium">{content.businessHours}</dd>
+              </div>
+            ) : null}
           </dl>
           <a href={routeUrl} target="_blank" rel="noreferrer" className="mt-8 inline-flex rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-on-brand transition hover:bg-brand-dim">
             {content.routeCta}
@@ -95,6 +110,9 @@ export function ContactsPageView({ content, members, mapSearchAddress }: {
           <iframe src={mapUrl} title="Карта проезда к офису агентства «Визуал»" className="h-full w-full border-0" loading="lazy" allowFullScreen />
         </section>
       </div>
+      <section className="mt-6 max-w-xl">
+        <LeadForm copy={content.form} />
+      </section>
     </main>
   );
 }

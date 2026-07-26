@@ -44,7 +44,16 @@ vi.mock("@/components/AgentCard", () => ({
     </div>
   ),
 }));
-vi.mock("@/components/LeadForm", () => ({ LeadForm: () => null }));
+vi.mock("@/components/LeadForm", () => ({
+  LeadForm: ({ copy }: {
+    copy: { title: string; successHelper: string };
+  }) => (
+    <div>
+      <span>{copy.title}</span>
+      <span>{copy.successHelper}</span>
+    </div>
+  ),
+}));
 vi.mock("@/components/PropertyDescription", () => ({
   PropertyDescription: () => null,
 }));
@@ -144,6 +153,56 @@ test("about, team, and contacts share the ordered visible published content", as
       html.indexOf("Второй видимый"),
     );
   }
+});
+
+test("renders all newly versioned About and Contacts copy from the publication", async () => {
+  const published = cloneDefault();
+  published.about.statistics = [
+    { value: "17", label: "лет опубликованного опыта" },
+  ];
+  published.contacts.introduction = "Опубликованное вступление контактов";
+  published.contacts.businessHoursLabel = "Опубликованные часы";
+  published.contacts.businessHours = "По предварительной записи";
+  published.contacts.form.title = "Опубликованная форма";
+  published.contacts.form.nameLabel = "Опубликованная подпись имени";
+  published.contacts.form.successHelper =
+    "Опубликованное пояснение после отправки";
+  getPublishedContent.mockResolvedValue(published);
+  propertyFindUnique.mockResolvedValue({
+    id: "object-form-copy",
+    shortId: 102,
+    objectType: "Дом",
+    title: "Объект с формой",
+    price: 7_000_000,
+    rooms: null,
+    area: null,
+    district: null,
+    address: null,
+    description: null,
+    photos: [],
+    agent: null,
+  });
+
+  const [aboutHtml, contactsHtml, objectHtml] = [
+    renderToStaticMarkup(await AboutPage()),
+    renderToStaticMarkup(await ContactsPage()),
+    renderToStaticMarkup(
+      await ObjectPage({
+        params: Promise.resolve({ id: "object-form-copy" }),
+      }),
+    ),
+  ];
+
+  expect(aboutHtml).toContain("17");
+  expect(aboutHtml).toContain("лет опубликованного опыта");
+  expect(contactsHtml).toContain("Опубликованное вступление контактов");
+  expect(contactsHtml).toContain("Опубликованные часы");
+  expect(contactsHtml).toContain("По предварительной записи");
+  for (const html of [contactsHtml, objectHtml]) {
+    expect(html).toContain("Опубликованная форма");
+  }
+  expect(contactsHtml).toContain("Опубликованная подпись имени");
+  expect(objectHtml).toContain("Опубликованное пояснение после отправки");
 });
 
 test("contacts derives the map destination from a changed published address", async () => {

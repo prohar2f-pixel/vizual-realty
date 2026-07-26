@@ -19,11 +19,12 @@ type ScalarPath =
   | `home.${Exclude<keyof SiteContentV1["home"], "benefits">}`
   | `about.${Exclude<
       keyof SiteContentV1["about"],
-      "introduction" | "services"
+      "introduction" | "services" | "statistics"
     >}`
   | "team.title"
   | "team.introduction"
-  | `contacts.${keyof SiteContentV1["contacts"]}`;
+  | `contacts.${Exclude<keyof SiteContentV1["contacts"], "form">}`
+  | `contacts.form.${keyof SiteContentV1["contacts"]["form"]}`;
 
 type MemberTextField = Exclude<keyof TeamMemberV1, "id" | "isVisible">;
 
@@ -53,6 +54,14 @@ type ContentEditorAction =
     }
   | { type: "add-benefit" }
   | { type: "remove-benefit"; index: number }
+  | {
+      type: "set-statistic";
+      index: number;
+      field: "value" | "label";
+      value: string;
+    }
+  | { type: "add-statistic" }
+  | { type: "remove-statistic"; index: number }
   | { type: "add-member"; id: string }
   | { type: "move-member"; index: number; direction: -1 | 1 }
   | { type: "set-member-visible"; index: number; isVisible: boolean }
@@ -130,9 +139,10 @@ function setScalarText(
   value: string,
 ) {
   const next = cloneContent(draft);
-  const [section, field] = path.split(".") as [
+  const [section, field, nestedField] = path.split(".") as [
     keyof SiteContentV1,
     string,
+    string | undefined,
   ];
   if (section === "navigation") {
     next.navigation[field as keyof SiteContentV1["navigation"]] = value;
@@ -145,18 +155,27 @@ function setScalarText(
   } else if (
     section === "about" &&
     field !== "introduction" &&
-    field !== "services"
+    field !== "services" &&
+    field !== "statistics"
   ) {
     next.about[
       field as Exclude<
         keyof SiteContentV1["about"],
-        "introduction" | "services"
+        "introduction" | "services" | "statistics"
       >
     ] = value;
   } else if (section === "team" && (field === "title" || field === "introduction")) {
     next.team[field] = value;
   } else if (section === "contacts") {
-    next.contacts[field as keyof SiteContentV1["contacts"]] = value;
+    if (field === "form" && nestedField) {
+      next.contacts.form[
+        nestedField as keyof SiteContentV1["contacts"]["form"]
+      ] = value;
+    } else if (field !== "form") {
+      next.contacts[
+        field as Exclude<keyof SiteContentV1["contacts"], "form">
+      ] = value;
+    }
   }
   return next;
 }
@@ -262,6 +281,27 @@ export function contentEditorReducer(
         return state;
       }
       draft.home.benefits.splice(action.index, 1);
+      return withDraft(state, draft);
+    }
+    case "set-statistic": {
+      const draft = cloneContent(state.draft);
+      const statistic = draft.about.statistics[action.index];
+      if (!statistic) return state;
+      statistic[action.field] = action.value;
+      return withDraft(state, draft);
+    }
+    case "add-statistic": {
+      if (state.draft.about.statistics.length >= 6) return state;
+      const draft = cloneContent(state.draft);
+      draft.about.statistics.push({ value: "", label: "" });
+      return withDraft(state, draft);
+    }
+    case "remove-statistic": {
+      const draft = cloneContent(state.draft);
+      if (action.index < 0 || action.index >= draft.about.statistics.length) {
+        return state;
+      }
+      draft.about.statistics.splice(action.index, 1);
       return withDraft(state, draft);
     }
     case "add-member": {
@@ -834,6 +874,78 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
               <TextField label="Текст о команде" path="about.teamCtaText" value={state.draft.about.teamCtaText} maxLength={1200} multiline rows={4} disabled={locked} issue={fieldIssue("about.teamCtaText")} onChange={(value) => setText("about.teamCtaText", value)} />
             </Section>
 
+            <Section
+              title="Показатели"
+              description="До 6 числовых показателей с отдельными подписями."
+            >
+              <div className="space-y-4 sm:col-span-2">
+                <IssueSummary
+                  scope="about.statistics"
+                  messages={issueMessagesWithin(
+                    state.issues,
+                    "about.statistics",
+                  )}
+                />
+                {state.draft.about.statistics.map((statistic, index) => (
+                  <div
+                    key={index}
+                    className="rounded-lg border border-stone-200 p-4"
+                  >
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <TextField
+                        label={`Значение показателя ${index + 1}`}
+                        path={`about.statistics[${index}].value`}
+                        value={statistic.value}
+                        maxLength={120}
+                        disabled={locked}
+                        issue={fieldIssue(`about.statistics[${index}].value`)}
+                        onChange={(value) =>
+                          dispatch({
+                            type: "set-statistic",
+                            index,
+                            field: "value",
+                            value,
+                          })
+                        }
+                      />
+                      <TextField
+                        label={`Подпись показателя ${index + 1}`}
+                        path={`about.statistics[${index}].label`}
+                        value={statistic.label}
+                        maxLength={120}
+                        disabled={locked}
+                        issue={fieldIssue(`about.statistics[${index}].label`)}
+                        onChange={(value) =>
+                          dispatch({
+                            type: "set-statistic",
+                            index,
+                            field: "label",
+                            value,
+                          })
+                        }
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={locked}
+                      onClick={() => dispatch({ type: "remove-statistic", index })}
+                      className="mt-3 min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                    >
+                      Убрать показатель {index + 1}
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  disabled={locked || state.draft.about.statistics.length >= 6}
+                  onClick={() => dispatch({ type: "add-statistic" })}
+                  className="min-h-11 rounded-lg border border-brand px-4 py-2 font-semibold text-brand disabled:opacity-40"
+                >
+                  Добавить показатель
+                </button>
+              </div>
+            </Section>
+
             <Section title="Вступление" description="До 12 абзацев, каждый до 1200 символов.">
               <div className="space-y-4 sm:col-span-2">
                 <IssueSummary
@@ -933,17 +1045,44 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
         )}
 
         {activeTab === "contacts" && (
-          <Section title="Контакты" description="Телефон и E-mail сохраняются как значения, без tel: и mailto:.">
-            <TextField label="Заголовок страницы" path="contacts.title" value={state.draft.contacts.title} maxLength={120} disabled={locked} issue={fieldIssue("contacts.title")} onChange={(value) => setText("contacts.title", value)} />
-            <TextField label="Заголовок менеджеров" path="contacts.managersTitle" value={state.draft.contacts.managersTitle} maxLength={120} disabled={locked} issue={fieldIssue("contacts.managersTitle")} onChange={(value) => setText("contacts.managersTitle", value)} />
-            <TextField label="Подпись телефона" path="contacts.phoneLabel" value={state.draft.contacts.phoneLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.phoneLabel")} onChange={(value) => setText("contacts.phoneLabel", value)} />
-            <TextField label="Подпись E-mail" path="contacts.emailLabel" value={state.draft.contacts.emailLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.emailLabel")} onChange={(value) => setText("contacts.emailLabel", value)} />
-            <TextField label="Подпись адреса" path="contacts.addressLabel" value={state.draft.contacts.addressLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.addressLabel")} onChange={(value) => setText("contacts.addressLabel", value)} />
-            <TextField label="Адрес" path="contacts.address" value={state.draft.contacts.address} maxLength={120} disabled={locked} issue={fieldIssue("contacts.address")} onChange={(value) => setText("contacts.address", value)} />
-            <TextField label="Телефон" path="contacts.phone" value={state.draft.contacts.phone} maxLength={32} type="tel" autoComplete="tel" disabled={locked} issue={fieldIssue("contacts.phone")} onChange={(value) => setText("contacts.phone", value)} />
-            <TextField label="E-mail" path="contacts.email" value={state.draft.contacts.email} maxLength={120} type="email" autoComplete="email" disabled={locked} issue={fieldIssue("contacts.email")} onChange={(value) => setText("contacts.email", value)} />
-            <TextField label="Кнопка маршрута" path="contacts.routeCta" value={state.draft.contacts.routeCta} maxLength={120} disabled={locked} issue={fieldIssue("contacts.routeCta")} onChange={(value) => setText("contacts.routeCta", value)} />
-          </Section>
+          <>
+            <Section title="Контакты" description="Телефон и E-mail сохраняются как значения, без tel: и mailto:.">
+              <TextField label="Заголовок страницы" path="contacts.title" value={state.draft.contacts.title} maxLength={120} disabled={locked} issue={fieldIssue("contacts.title")} onChange={(value) => setText("contacts.title", value)} />
+              <TextField label="Заголовок менеджеров" path="contacts.managersTitle" value={state.draft.contacts.managersTitle} maxLength={120} disabled={locked} issue={fieldIssue("contacts.managersTitle")} onChange={(value) => setText("contacts.managersTitle", value)} />
+              <div className="sm:col-span-2">
+                <TextField label="Вступительный текст" path="contacts.introduction" value={state.draft.contacts.introduction} maxLength={1200} multiline rows={4} disabled={locked} issue={fieldIssue("contacts.introduction")} help="Можно оставить пустым — тогда блок не показывается." onChange={(value) => setText("contacts.introduction", value)} />
+              </div>
+              <TextField label="Подпись телефона" path="contacts.phoneLabel" value={state.draft.contacts.phoneLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.phoneLabel")} onChange={(value) => setText("contacts.phoneLabel", value)} />
+              <TextField label="Подпись E-mail" path="contacts.emailLabel" value={state.draft.contacts.emailLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.emailLabel")} onChange={(value) => setText("contacts.emailLabel", value)} />
+              <TextField label="Подпись адреса" path="contacts.addressLabel" value={state.draft.contacts.addressLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.addressLabel")} onChange={(value) => setText("contacts.addressLabel", value)} />
+              <TextField label="Адрес" path="contacts.address" value={state.draft.contacts.address} maxLength={120} disabled={locked} issue={fieldIssue("contacts.address")} onChange={(value) => setText("contacts.address", value)} />
+              <TextField label="Телефон" path="contacts.phone" value={state.draft.contacts.phone} maxLength={32} type="tel" autoComplete="tel" disabled={locked} issue={fieldIssue("contacts.phone")} onChange={(value) => setText("contacts.phone", value)} />
+              <TextField label="E-mail" path="contacts.email" value={state.draft.contacts.email} maxLength={120} type="email" autoComplete="email" disabled={locked} issue={fieldIssue("contacts.email")} onChange={(value) => setText("contacts.email", value)} />
+              <TextField label="Подпись режима работы" path="contacts.businessHoursLabel" value={state.draft.contacts.businessHoursLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.businessHoursLabel")} onChange={(value) => setText("contacts.businessHoursLabel", value)} />
+              <TextField label="Режим работы" path="contacts.businessHours" value={state.draft.contacts.businessHours} maxLength={120} disabled={locked} issue={fieldIssue("contacts.businessHours")} help="Можно оставить пустым — часы не будут показаны." onChange={(value) => setText("contacts.businessHours", value)} />
+              <TextField label="Кнопка маршрута" path="contacts.routeCta" value={state.draft.contacts.routeCta} maxLength={120} disabled={locked} issue={fieldIssue("contacts.routeCta")} onChange={(value) => setText("contacts.routeCta", value)} />
+            </Section>
+            <Section
+              title="Форма заявки"
+              description="Эти подписи используются в форме на публичном сайте."
+            >
+              <TextField label="Заголовок формы" path="contacts.form.title" value={state.draft.contacts.form.title} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.title")} onChange={(value) => setText("contacts.form.title", value)} />
+              <TextField label="Подпись имени" path="contacts.form.nameLabel" value={state.draft.contacts.form.nameLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.nameLabel")} onChange={(value) => setText("contacts.form.nameLabel", value)} />
+              <TextField label="Подсказка имени" path="contacts.form.namePlaceholder" value={state.draft.contacts.form.namePlaceholder} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.namePlaceholder")} onChange={(value) => setText("contacts.form.namePlaceholder", value)} />
+              <TextField label="Подпись контакта" path="contacts.form.contactLabel" value={state.draft.contacts.form.contactLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.contactLabel")} onChange={(value) => setText("contacts.form.contactLabel", value)} />
+              <TextField label="Подсказка контакта" path="contacts.form.contactPlaceholder" value={state.draft.contacts.form.contactPlaceholder} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.contactPlaceholder")} onChange={(value) => setText("contacts.form.contactPlaceholder", value)} />
+              <TextField label="Подпись сообщения" path="contacts.form.messageLabel" value={state.draft.contacts.form.messageLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.messageLabel")} onChange={(value) => setText("contacts.form.messageLabel", value)} />
+              <TextField label="Кнопка отправки" path="contacts.form.submitLabel" value={state.draft.contacts.form.submitLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.submitLabel")} onChange={(value) => setText("contacts.form.submitLabel", value)} />
+              <TextField label="Текст во время отправки" path="contacts.form.submittingLabel" value={state.draft.contacts.form.submittingLabel} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.submittingLabel")} onChange={(value) => setText("contacts.form.submittingLabel", value)} />
+              <TextField label="Сообщение об успехе" path="contacts.form.successTitle" value={state.draft.contacts.form.successTitle} maxLength={120} disabled={locked} issue={fieldIssue("contacts.form.successTitle")} onChange={(value) => setText("contacts.form.successTitle", value)} />
+              <div className="sm:col-span-2">
+                <TextField label="Пояснение после отправки" path="contacts.form.successHelper" value={state.draft.contacts.form.successHelper} maxLength={1200} multiline rows={3} disabled={locked} issue={fieldIssue("contacts.form.successHelper")} onChange={(value) => setText("contacts.form.successHelper", value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <TextField label="Сообщение при ошибке" path="contacts.form.errorText" value={state.draft.contacts.form.errorText} maxLength={1200} multiline rows={3} disabled={locked} issue={fieldIssue("contacts.form.errorText")} onChange={(value) => setText("contacts.form.errorText", value)} />
+              </div>
+            </Section>
+          </>
         )}
       </div>
 

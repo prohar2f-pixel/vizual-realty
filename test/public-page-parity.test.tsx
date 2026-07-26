@@ -4,6 +4,7 @@ import AboutPage from "../src/app/(public)/about/page";
 import ContactsPage from "../src/app/(public)/contacts/page";
 import Home from "../src/app/(public)/page";
 import TeamPage from "../src/app/(public)/team/page";
+import { AboutPageView } from "../src/components/site-content/AboutPageView";
 import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
 
 const getPublishedContent = vi.hoisted(() => vi.fn());
@@ -44,8 +45,25 @@ test("keeps the pre-preview Team heading and introduction", async () => {
 test("keeps the pre-preview About call-to-action sentence capitalization", async () => {
   const html = renderToStaticMarkup(await AboutPage());
 
+  expect(html).toContain(">В разделе</p>");
+  expect(html).toMatch(/<a [^>]*>КОМАНДА<\/a>/);
+  expect(html).toContain(
+    ">Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝</p>",
+  );
+});
+
+test("renders an independently editable About link and unrelated explanation with spacing", async () => {
+  const content = structuredClone(DEFAULT_SITE_CONTENT);
+  content.about.teamCta = "Познакомиться";
+  content.about.teamCtaText =
+    "Совершенно отдельное пояснение, не содержащее подпись ссылки.";
+
+  const html = renderToStaticMarkup(
+    <AboutPageView content={content.about} />,
+  );
+
   expect(html).toMatch(
-    /В разделе <a [^>]*>КОМАНДА<\/a> Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝/,
+    /<a [^>]*href="\/team"[^>]*>Познакомиться<\/a><p class="mt-2[^"]*">Совершенно отдельное пояснение, не содержащее подпись ссылки\.<\/p>/,
   );
 });
 

@@ -274,6 +274,48 @@ afterEach(async () => {
 });
 
 describe("site content public reads", () => {
+  test("hydrates the exact legacy v1 storage shape without weakening new draft validation", async () => {
+    const legacy = clone(DEFAULT_SITE_CONTENT) as unknown as Record<string, unknown>;
+    const legacyAbout = legacy.about as Record<string, unknown>;
+    const legacyContacts = legacy.contacts as Record<string, unknown>;
+    delete legacyAbout.statistics;
+    delete legacyContacts.introduction;
+    delete legacyContacts.businessHoursLabel;
+    delete legacyContacts.businessHours;
+    delete legacyContacts.form;
+    legacyAbout.teamCtaText =
+      "В разделе КОМАНДА Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝";
+
+    const initial = storedRow();
+    initial.draft = clone(legacy);
+    initial.published = clone(legacy);
+    const store = createSiteContentStore(createPrismaLikeClient(initial));
+
+    const [draft, published] = await Promise.all([
+      store.getDraftContent(),
+      store.getPublishedContent(),
+    ]);
+
+    for (const hydrated of [draft, published]) {
+      expect(hydrated.about.statistics).toEqual(
+        DEFAULT_SITE_CONTENT.about.statistics,
+      );
+      expect(hydrated.about.teamCtaText).toBe(
+        DEFAULT_SITE_CONTENT.about.teamCtaText,
+      );
+      expect(hydrated.contacts.form).toEqual(
+        DEFAULT_SITE_CONTENT.contacts.form,
+      );
+      expect(hydrated.contacts.businessHours).toBe("");
+    }
+
+    const partial = clone(legacy);
+    (partial.contacts as Record<string, unknown>).introduction = "Частичное обновление";
+    await expect(store.saveDraft(partial)).rejects.toBeInstanceOf(
+      SiteContentValidationError,
+    );
+  });
+
   test.each([
     ["a missing row", null, null],
     ["a database failure", storedRow(), prismaKnownRequestError("P2037")],
@@ -399,7 +441,7 @@ describe("site content admin reads and draft writes", () => {
     await expect(
       store.saveDraft({ ...snapshot("Невалидный"), private: "not allowed" }),
     ).rejects.toMatchObject({
-      issues: [{ path: "content.private", message: "is not allowed" }],
+      issues: [{ path: "content.private", message: "Поле не разрешено." }],
     });
   });
 

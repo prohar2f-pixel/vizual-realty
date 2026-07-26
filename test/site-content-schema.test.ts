@@ -20,6 +20,48 @@ test("accepts the shipped editable content and returns a normalized copy", () =>
   });
   expect(parsed.team.members).toHaveLength(DEFAULT_SITE_CONTENT.team.members.length);
   expect(parsed).not.toBe(DEFAULT_SITE_CONTENT);
+  expect(parsed.about.statistics).toEqual(DEFAULT_SITE_CONTENT.about.statistics);
+  expect(parsed.contacts.form).toEqual(DEFAULT_SITE_CONTENT.contacts.form);
+});
+
+test("round-trips every newly approved About and Contacts field", () => {
+  const content = copyDefaultContent();
+  Object.assign(content.about, {
+    statistics: [
+      { value: "17", label: "лет проверенной работы" },
+      { value: "350+", label: "сопровождённых сделок" },
+    ],
+    teamCta: "Познакомиться с экспертами",
+    teamCtaText: "Выберите специалиста, которому доверите свою сделку.",
+  });
+  Object.assign(content.contacts, {
+    introduction: "Свяжитесь с нами удобным способом.",
+    businessHoursLabel: "Часы работы",
+    businessHours: "По предварительной записи",
+    form: {
+      title: "Задать вопрос",
+      nameLabel: "Как к вам обращаться",
+      namePlaceholder: "Ваше имя",
+      contactLabel: "Телефон или почта",
+      contactPlaceholder: "Ваш контакт",
+      messageLabel: "Ваш вопрос",
+      submitLabel: "Отправить",
+      submittingLabel: "Отправляем…",
+      successTitle: "Сообщение отправлено.",
+      successHelper: "Мы ответим после обработки обращения.",
+      errorText: "Не удалось отправить сообщение.",
+    },
+  });
+
+  const parsed = parseSiteContent(content);
+
+  expect(parsed.about).toEqual(content.about);
+  expect(parsed.contacts).toMatchObject({
+    introduction: content.contacts.introduction,
+    businessHoursLabel: content.contacts.businessHoursLabel,
+    businessHours: content.contacts.businessHours,
+    form: content.contacts.form,
+  });
 });
 
 test("rejects unknown object keys", () => {
@@ -209,6 +251,22 @@ test("returns structured issues instead of throwing from safe parsing", () => {
       expect.arrayContaining([
         expect.objectContaining({ path: "team.members[0].name" }),
       ]),
+    );
+  }
+});
+
+test("returns ordinary validation issues in Russian", () => {
+  const result = safeParseSiteContent({
+    schemaVersion: 2,
+    navigation: null,
+  });
+
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    expect(result.issues.length).toBeGreaterThan(0);
+    expect(result.issues.every((issue) => /[А-Яа-яЁё]/u.test(issue.message))).toBe(true);
+    expect(result.issues.map((issue) => issue.message).join(" ")).not.toMatch(
+      /\b(?:must|is required|is not allowed|visible members)\b/i,
     );
   }
 });

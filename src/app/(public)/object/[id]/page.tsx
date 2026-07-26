@@ -114,7 +114,11 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
               </Link>
             </p>
           )}
-          <LeadForm objectShortId={p.shortId} objectType={p.objectType} />
+          <LeadForm
+            objectShortId={p.shortId}
+            objectType={p.objectType}
+            copy={content.contacts.form}
+          />
         </div>
       </div>
     </main>

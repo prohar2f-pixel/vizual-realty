@@ -23,20 +23,34 @@ export function assertTrustedOrigin(request: Request, siteOrigin?: string): void
   }
 }
 
-export async function getAdminSession(): Promise<AdminSession | null> {
+export async function getAdminSessionState(): Promise<{
+  session: AdminSession | null;
+  invalidCookie: boolean;
+}> {
   const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value;
-  if (!token) return null;
+  if (!token) return { session: null, invalidCookie: false };
 
   try {
     const config = readAdminAuthConfig();
-    return unsealSession(token, config.sessionSecret);
+    const session = unsealSession(token, config.sessionSecret);
+    return { session, invalidCookie: session === null };
   } catch {
-    return null;
+    return { session: null, invalidCookie: true };
   }
 }
 
+export async function getAdminSession(): Promise<AdminSession | null> {
+  return (await getAdminSessionState()).session;
+}
+
 export async function requireAdminSession(): Promise<AdminSession> {
-  const session = await getAdminSession();
-  if (!session) redirect("/admin/login");
-  return session;
+  const result = await getAdminSessionState();
+  if (!result.session) {
+    redirect(
+      result.invalidCookie
+        ? "/api/admin/session/clear"
+        : "/admin/login",
+    );
+  }
+  return result.session;
 }

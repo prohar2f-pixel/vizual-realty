@@ -15,14 +15,15 @@ import {
   resetLoginRateLimitsForTests,
 } from "../src/app/api/admin/login/route";
 import { createLogoutHandler } from "../src/app/api/admin/logout/route";
-import { LoginPageView } from "../src/app/admin/login/page";
+import AdminLoginPage, { LoginPageView } from "../src/app/admin/login/page";
 
 const nextCookies = vi.hoisted(() => vi.fn());
+const nextRedirect = vi.hoisted(() => vi.fn());
 
 vi.mock("next/headers", () => ({ cookies: nextCookies }));
 
 vi.mock("next/navigation", () => ({
-  redirect: vi.fn(),
+  redirect: nextRedirect,
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
@@ -195,6 +196,43 @@ test("does not swallow errors from the Next cookies request boundary", async () 
   try {
     const { getAdminSession } = await import("../src/lib/admin/request");
     await expect(getAdminSession()).rejects.toThrow("test request boundary error");
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test("sends an invalid admin cookie through the fixed clearing route", async () => {
+  vi.stubEnv("ADMIN_USERNAME", "test-admin");
+  vi.stubEnv("ADMIN_PASSWORD_HASH", TEST_HASH_PLACEHOLDER);
+  vi.stubEnv("ADMIN_SESSION_SECRET", TEST_SECRET);
+  vi.stubEnv("SITE_ORIGIN", TEST_ORIGIN);
+  nextRedirect.mockReset();
+  nextCookies.mockResolvedValueOnce({
+    get: () => ({ value: "tampered-cookie" }),
+  });
+
+  try {
+    const { requireAdminSession } = await import("../src/lib/admin/request");
+    await requireAdminSession();
+    expect(nextRedirect).toHaveBeenCalledWith("/api/admin/session/clear");
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test("clears an invalid cookie when the administrator opens the login page directly", async () => {
+  vi.stubEnv("ADMIN_USERNAME", "test-admin");
+  vi.stubEnv("ADMIN_PASSWORD_HASH", TEST_HASH_PLACEHOLDER);
+  vi.stubEnv("ADMIN_SESSION_SECRET", TEST_SECRET);
+  vi.stubEnv("SITE_ORIGIN", TEST_ORIGIN);
+  nextRedirect.mockReset();
+  nextCookies.mockResolvedValueOnce({
+    get: () => ({ value: "expired-or-tampered-cookie" }),
+  });
+
+  try {
+    await AdminLoginPage();
+    expect(nextRedirect).toHaveBeenCalledWith("/api/admin/session/clear");
   } finally {
     vi.unstubAllEnvs();
   }

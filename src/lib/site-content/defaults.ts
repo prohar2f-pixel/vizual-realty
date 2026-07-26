@@ -69,9 +69,13 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
     ],
     closingText:
       "В нашем каталоге более 200 объектов, за каждым закреплён личный агент, звоните.",
+    statistics: [
+      { value: "№ 1", label: "в рейтинге Домклик на Юге России" },
+      { value: "200+", label: "объектов в каталоге" },
+    ],
     teamCta: "КОМАНДА",
     teamCtaText:
-      "В разделе КОМАНДА Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝",
+      "Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝",
   },
   team: {
     title: "Наша команда",
@@ -150,6 +154,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
   },
   contacts: {
     title: "Контакты",
+    introduction: "",
     managersTitle: "Контакты менеджеров",
     phoneLabel: "Телефон",
     emailLabel: "E-mail",
@@ -157,6 +162,21 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
     address: "г. Донецк, ул. 50 лет СССР, 142",
     phone: "+7 (989) 802-84-32",
     email: "milmildom@mail.ru",
+    businessHoursLabel: "Режим работы",
+    businessHours: "",
     routeCta: "Проложить маршрут",
+    form: {
+      title: "Написать агенту",
+      nameLabel: "Ваше имя",
+      namePlaceholder: "Иван Иванов",
+      contactLabel: "Телефон или e-mail",
+      contactPlaceholder: "+7 900 000-00-00",
+      messageLabel: "Сообщение (необязательно)",
+      submitLabel: "Отправить заявку",
+      submittingLabel: "Отправляем…",
+      successTitle: "Спасибо! Заявка отправлена.",
+      successHelper: "Агент свяжется с вами в ближайшее время.",
+      errorText: "Не удалось отправить. Попробуйте позвонить агенту.",
+    },
   },
 };

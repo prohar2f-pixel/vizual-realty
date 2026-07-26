@@ -96,10 +96,28 @@ test("mounts the client editor and switches through all four tabs", async () => 
   expect(input(container, "home.heroTitle")).toBeInstanceOf(HTMLInputElement);
   await click(button(container, "О нас"));
   expect(input(container, "about.title")).toBeInstanceOf(HTMLInputElement);
+  expect(input(container, "about.statistics[0].value")).toBeInstanceOf(
+    HTMLInputElement,
+  );
+  expect(input(container, "about.statistics[0].label")).toBeInstanceOf(
+    HTMLInputElement,
+  );
   await click(button(container, "Команда"));
   expect(input(container, "team.title")).toBeInstanceOf(HTMLInputElement);
   await click(button(container, "Контакты"));
   expect(input(container, "contacts.email")).toBeInstanceOf(HTMLInputElement);
+  expect(input(container, "contacts.introduction")).toBeInstanceOf(
+    HTMLTextAreaElement,
+  );
+  expect(input(container, "contacts.businessHours")).toBeInstanceOf(
+    HTMLInputElement,
+  );
+  expect(input(container, "contacts.form.nameLabel")).toBeInstanceOf(
+    HTMLInputElement,
+  );
+  expect(input(container, "contacts.form.successHelper")).toBeInstanceOf(
+    HTMLTextAreaElement,
+  );
   await click(button(container, "Главная"));
   expect(input(container, "home.heroTitle")).toBeInstanceOf(HTMLInputElement);
 });

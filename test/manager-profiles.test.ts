@@ -91,18 +91,18 @@ test("does not expose unknown or hidden Topnlab agents as public managers", () =
     id: "hidden",
     name: "Скрытый менеджер",
     phone: "+7 (949) 111-22-33",
-    topnlabAgentId: "hidden-agent",
+    topnlabAgentId: "297091",
     isVisible: false,
   }];
 
   expect(resolveManager({
-    id: "unknown-agent",
+    id: "999999",
     name: "Неизвестный",
     phone: "+7 (949) 000-00-00",
     photoUrl: "/crm/unknown.webp",
   }, members)).toBeUndefined();
   expect(resolveManager({
-    id: "hidden-agent",
+    id: "297091",
     name: "Скрытый",
     phone: "+7 (949) 000-00-00",
     photoUrl: "/crm/hidden.webp",

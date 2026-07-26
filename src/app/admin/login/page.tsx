@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getAdminSession } from "../../../lib/admin/request";
+import { getAdminSessionState } from "../../../lib/admin/request";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = {
@@ -25,6 +25,8 @@ export function LoginPageView() {
 }
 
 export default async function AdminLoginPage() {
-  if (await getAdminSession()) redirect("/admin/featured");
+  const state = await getAdminSessionState();
+  if (state.invalidCookie) redirect("/api/admin/session/clear");
+  if (state.session) redirect("/admin/featured");
   return <LoginPageView />;
 }

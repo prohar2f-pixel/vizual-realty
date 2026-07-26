@@ -11,7 +11,7 @@ import {
   TeamImageValidationError,
 } from "../../../../lib/team-images";
 
-const MAX_MULTIPART_BODY_BYTES = TEAM_IMAGE_MAX_BYTES;
+const MAX_MULTIPART_BODY_BYTES = 11 * 1024 * 1024;
 
 type UploadDependencies = {
   readSession: () => Promise<AdminSession | null>;

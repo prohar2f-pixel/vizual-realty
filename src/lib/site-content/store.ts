@@ -84,9 +84,58 @@ function asStoredRow(value: unknown): StoredContentRow {
   };
 }
 
+const LEGACY_TEAM_CTA_TEXT =
+  "В разделе КОМАНДА Вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝";
+
+function asPlainRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function hydrateExactLegacyV1(value: unknown): unknown {
+  const root = asPlainRecord(value);
+  const about = asPlainRecord(root?.about);
+  const contacts = asPlainRecord(root?.contacts);
+  if (
+    root?.schemaVersion !== 1 ||
+    !about ||
+    !contacts ||
+    Object.hasOwn(about, "statistics") ||
+    Object.hasOwn(contacts, "introduction") ||
+    Object.hasOwn(contacts, "businessHoursLabel") ||
+    Object.hasOwn(contacts, "businessHours") ||
+    Object.hasOwn(contacts, "form")
+  ) {
+    return value;
+  }
+
+  return {
+    ...root,
+    about: {
+      ...about,
+      statistics: structuredClone(DEFAULT_SITE_CONTENT.about.statistics),
+      teamCtaText:
+        about.teamCtaText === LEGACY_TEAM_CTA_TEXT
+          ? DEFAULT_SITE_CONTENT.about.teamCtaText
+          : about.teamCtaText,
+    },
+    contacts: {
+      ...contacts,
+      introduction: DEFAULT_SITE_CONTENT.contacts.introduction,
+      businessHoursLabel:
+        DEFAULT_SITE_CONTENT.contacts.businessHoursLabel,
+      businessHours: DEFAULT_SITE_CONTENT.contacts.businessHours,
+      form: structuredClone(DEFAULT_SITE_CONTENT.contacts.form),
+    },
+  };
+}
+
 function parseStoredContent(value: unknown): SiteContentV1 {
   try {
-    return parseSiteContent(value);
+    return parseSiteContent(hydrateExactLegacyV1(value));
   } catch (error) {
     if (error instanceof SiteContentValidationError) {
       throw new SiteContentStorageError("INVALID_STORED_CONTENT");
