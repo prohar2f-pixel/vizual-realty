@@ -54,7 +54,7 @@
 ## Технологический стек
 
 **Frontend:**
-- Next.js 16.2.9 (Turbopack)
+- Next.js 16.2.12 (Turbopack)
 - React 19
 - TypeScript
 - Tailwind CSS
@@ -167,6 +167,12 @@ chmod 600 .env
 
 ### 1. Backup и фиксация точки отката
 
+Один раз создать вне Git два файла режима `0600`: `/home/vizual/.pg_service.conf`
+с секцией `[vizual_backup]` (`host`, `port`, `dbname`, `user`, `sslmode`) и
+`/home/vizual/.pgpass` в формате `host:port:database:user:password`. Реальные
+значения вводятся защищённым редактором, не командой shell. Backup использует
+только имена и пути libpq; пароль и `DATABASE_URL` не попадают в `argv`.
+
 ```bash
 set -e
 umask 077
@@ -176,7 +182,10 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_DIR="/home/vizual/backups/$STAMP"
 mkdir -p "$BACKUP_DIR"
 git rev-parse HEAD > "$BACKUP_DIR/previous-commit.txt"
-( set -a; . ./.env; set +a; pg_dump --format=custom --file="$BACKUP_DIR/database.dump" "$DATABASE_URL" )
+PGSERVICE=vizual_backup \
+PGSERVICEFILE=/home/vizual/.pg_service.conf \
+PGPASSFILE=/home/vizual/.pgpass \
+pg_dump --format=custom --file="$BACKUP_DIR/database.dump"
 if [ -d /home/vizual/data/team-uploads ]; then
   tar -C /home/vizual/data -czf "$BACKUP_DIR/team-uploads.tgz" team-uploads
 fi
@@ -198,7 +207,31 @@ APP_GROUP="$(stat -c '%G' /home/vizual/app)"
 install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" /home/vizual/data/team-uploads
 chmod 600 .env
 npm ci
+```
+
+Для **новой пустой базы** применить обе миграции обычным способом:
+
+```bash
 npx prisma migrate deploy
+```
+
+Для **существующей production-базы** с таблицами `Agent` и `Property`, но без
+истории Prisma migrations, сначала выполнить строгий preflight. Только после его
+успеха один раз отметить baseline применённым и развернуть admin-миграцию:
+
+```bash
+PGSERVICE=vizual_backup \
+PGSERVICEFILE=/home/vizual/.pg_service.conf \
+PGPASSFILE=/home/vizual/.pgpass \
+psql -v ON_ERROR_STOP=1 -f scripts/preflight-admin-baseline.sql
+npx prisma migrate resolve --applied 20260710000000_initial_catalog_baseline
+npx prisma migrate deploy
+```
+
+Не выполнять `migrate resolve`, если preflight завершился ошибкой или admin-таблицы
+уже существуют. После выбранного варианта продолжить seed и сборку:
+
+```bash
 npx tsx scripts/seed-admin-content.ts
 npx tsx scripts/seed-admin-content.ts
 npm run build

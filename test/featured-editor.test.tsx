@@ -167,6 +167,24 @@ test("marks a saved hidden property for explicit removal", () => {
   expect(html).toContain("Убрать");
 });
 
+test("keeps repeated titles and short IDs distinguishable by the full property ID", () => {
+  const html = renderToStaticMarkup(
+    createElement(FeaturedEditor, {
+      initialItems: [
+        card("property-full-a", { title: "Одинаковый объект", shortId: 77 }),
+        card("property-full-b", { title: "Одинаковый объект", shortId: 77 }),
+      ],
+    }),
+  );
+
+  expect(html).toContain(
+    "Переместить объект Одинаковый объект, ID property-full-a выше",
+  );
+  expect(html).toContain(
+    "Переместить объект Одинаковый объект, ID property-full-b ниже",
+  );
+});
+
 test("renders the protected featured page heading and editor", () => {
   const html = renderToStaticMarkup(
     createElement(FeaturedPageView, { items: [card("a")] }),

@@ -245,7 +245,7 @@ function PropertySummary({ item }: { item: PropertyCardData }) {
 }
 
 function propertyControlName(item: PropertyCardData) {
-  return `объект ${item.title}, ID ${item.shortId ?? item.id}`;
+  return `объект ${item.title}, ID ${item.id}`;
 }
 
 type FeaturedEditorProps = {

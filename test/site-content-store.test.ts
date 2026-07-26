@@ -19,6 +19,7 @@ import type { AdminSession } from "../src/lib/admin/session";
 import { createTeamImageReferenceValidator } from "../src/lib/team-image-files";
 import { createTeamImageStorage } from "../src/lib/team-images";
 import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
+import { acquireSiteContentMutationLock } from "../src/lib/site-content/mutation-lock";
 import {
   SiteContentValidationError,
   type SiteContentV1,
@@ -28,6 +29,19 @@ import {
   SiteContentConflictError,
   SiteContentStorageError,
 } from "../src/lib/site-content/store";
+
+test("returns the advisory lock as an adapter-supported scalar", async () => {
+  let sql = "";
+  await acquireSiteContentMutationLock({
+    async $queryRaw<T>(query: unknown): Promise<T> {
+      sql = (query as { strings?: readonly string[] }).strings?.join(" ") ?? "";
+      return [{ locked: false }] as T;
+    },
+  });
+
+  expect(sql).toContain("pg_advisory_xact_lock");
+  expect(sql).toContain('IS NULL AS "locked"');
+});
 
 type StoredSiteContent = {
   id: string;

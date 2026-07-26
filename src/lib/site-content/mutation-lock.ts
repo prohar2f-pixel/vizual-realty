@@ -16,11 +16,11 @@ type TransactionHost = {
 export async function acquireSiteContentMutationLock(
   client: QueryClient,
 ) {
-  await client.$queryRaw<unknown>(Prisma.sql`
+  await client.$queryRaw<Array<{ locked: boolean }>>(Prisma.sql`
     SELECT pg_advisory_xact_lock(
       ${SITE_CONTENT_LOCK_NAMESPACE},
       ${SITE_CONTENT_LOCK_KEY}
-    )
+    ) IS NULL AS "locked"
   `);
 }
 
