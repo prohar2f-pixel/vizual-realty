@@ -45,7 +45,7 @@
 - `scripts/seed-admin-content.ts` — идемпотентное начальное заполнение текущими данными.
 - `test/admin-*.test.ts`, `test/site-content*.test.ts`, `test/featured*.test.ts`, `test/team-images.test.ts` — модульные и маршрутные проверки.
 
-### Задача 1: Добавить модели базы и первоначальные данные
+### Task 1: Добавить модели базы и первоначальные данные
 
 **Файлы:**
 - Изменить: `prisma/schema.prisma`
@@ -99,7 +99,7 @@ git add prisma src/generated/prisma src/lib/site-content/defaults.ts scripts/see
 git commit -m "feat: add admin content persistence"
 ```
 
-### Задача 2: Реализовать строгую схему контента
+### Task 2: Реализовать строгую схему контента
 
 **Файлы:**
 - Создать: `src/lib/site-content/schema.ts`
@@ -136,7 +136,7 @@ git add src/lib/site-content/schema.ts test/site-content-schema.test.ts
 git commit -m "feat: validate editable site content"
 ```
 
-### Задача 3: Реализовать зашифрованную сессию и вход
+### Task 3: Реализовать зашифрованную сессию и вход
 
 **Файлы:**
 - Создать: `src/lib/admin/session.ts`
@@ -186,7 +186,7 @@ git add src/lib/admin src/app/api/admin/login src/app/api/admin/logout src/app/a
 git commit -m "feat: secure admin authentication"
 ```
 
-### Задача 4: Создать защищённую оболочку админ-панели
+### Task 4: Создать защищённую оболочку админ-панели
 
 **Файлы:**
 - Создать: `src/app/admin/(protected)/layout.tsx`
@@ -215,7 +215,7 @@ git add src/app/admin src/components/admin/AdminShell.tsx src/app/robots.ts test
 git commit -m "feat: add protected admin shell"
 ```
 
-### Задача 5: Реализовать выбор избранных объектов
+### Task 5: Реализовать выбор избранных объектов
 
 **Файлы:**
 - Создать: `src/lib/featured.ts`
@@ -255,7 +255,7 @@ git add src/lib/featured.ts src/app/api/admin/featured src/app/api/admin/propert
 git commit -m "feat: manage featured properties"
 ```
 
-### Задача 6: Реализовать хранилище черновика, публикацию и откат
+### Task 6: Реализовать хранилище черновика, публикацию и откат
 
 **Файлы:**
 - Создать: `src/lib/site-content/store.ts`
@@ -290,7 +290,7 @@ git add src/lib/site-content/store.ts src/app/api/admin/content src/app/api/admi
 git commit -m "feat: add content draft publishing"
 ```
 
-### Задача 7: Добавить загрузку и выдачу фотографий команды
+### Task 7: Добавить загрузку и выдачу фотографий команды
 
 **Файлы:**
 - Изменить: `package.json`, `package-lock.json`
@@ -333,7 +333,7 @@ git add package.json package-lock.json src/lib/team-images.ts src/app/api/admin/
 git commit -m "feat: upload team photos safely"
 ```
 
-### Задача 8: Создать редактор текстов и сотрудников
+### Task 8: Создать редактор текстов и сотрудников
 
 **Файлы:**
 - Создать: `src/app/admin/(protected)/content/page.tsx`
@@ -367,7 +367,7 @@ git add src/app/admin/\(protected\)/content src/components/admin/TextField.tsx s
 git commit -m "feat: edit site content and team"
 ```
 
-### Задача 9: Добавить закрытый предпросмотр, публикацию и откат
+### Task 9: Добавить закрытый предпросмотр, публикацию и откат
 
 **Файлы:**
 - Создать: `src/app/admin/(protected)/preview/page.tsx`
@@ -399,7 +399,7 @@ git add src/app/admin/\(protected\)/preview src/components/admin/PreviewBar.tsx 
 git commit -m "feat: preview and publish site content"
 ```
 
-### Задача 10: Подключить опубликованные данные ко всем публичным страницам
+### Task 10: Подключить опубликованные данные ко всем публичным страницам
 
 **Файлы:**
 - Изменить: `src/app/layout.tsx`
@@ -442,7 +442,7 @@ git add src/app src/components src/lib test
 git commit -m "feat: render published admin content"
 ```
 
-### Задача 11: Полная проверка, миграционная репетиция и документация
+### Task 11: Полная проверка, миграционная репетиция и документация
 
 **Файлы:**
 - Изменить: `.env.example` — только названия и безопасные комментарии, без значений секретов.
@@ -494,7 +494,7 @@ git commit -m "docs: document admin operations"
 
 Сообщить путь worktree, список коммитов, результаты test/lint/build, результат миграционной репетиции и необходимые серверные переменные без их значений. Не выполнять push и deploy, пока пользователь явно не попросит.
 
-### Задача 12: Развёртывание после отдельного подтверждения пользователя
+### Task 12: Развёртывание после отдельного подтверждения пользователя
 
 **Файлы:**
 - Код не изменять; работать только с GitHub и сервером в согласованном порядке.
