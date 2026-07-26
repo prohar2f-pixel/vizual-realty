@@ -43,6 +43,48 @@ test("rejects HTML, Markdown links, and URL schemes in editable text", () => {
   expect(() => parseSiteContent(urlScheme)).toThrow(SiteContentValidationError);
 });
 
+test("rejects Markdown bold syntax in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "**Важное объявление**";
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
+test("rejects Markdown inline code syntax in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "Используйте `код`";
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
+test("rejects Markdown heading syntax in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "# Заголовок";
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
+test("rejects Markdown list syntax in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "- Первый пункт";
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
+test("allows ordinary Russian punctuation in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "«Визуал»: продажа, покупка — без комиссии!";
+
+  expect(parseSiteContent(content).home.heroTitle).toBe("«Визуал»: продажа, покупка — без комиссии!");
+});
+
+test("rejects content that inherits required and unknown fields from a prototype", () => {
+  const inherited = { ...copyDefaultContent(), inheritedExtra: true };
+  const content = Object.create(inherited);
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
 test("enforces the 120 character short-text and 1200 character paragraph limits", () => {
   const longLabel = copyDefaultContent();
   longLabel.home.heroHeading = "a".repeat(121);

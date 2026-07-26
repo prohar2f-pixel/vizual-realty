@@ -94,12 +94,16 @@ const MAX_TEAM_MEMBERS = 30;
 const MAX_INTRODUCTION_PARAGRAPHS = 12;
 const MAX_SERVICES = 12;
 const FORBIDDEN_TEXT = /[<>]|\[[^\]]*\]\([^)]*\)|\b[a-z][a-z0-9+.-]*:/i;
+const INLINE_MARKDOWN = /(?:\*\*|__|~~|`)|(?:^|\s)(?:\*[^*\n]+\*|_[^_\n]+_)/;
+const BLOCK_MARKDOWN = /^\s*(?:#{1,6}\s|[-+*]\s|\d+[.)]\s)/m;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TELEGRAM_USERNAME = /^[A-Za-z][A-Za-z0-9_]{4,31}$/;
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function addIssue(issues: ContentIssue[], path: string, message: string) {
@@ -125,7 +129,7 @@ function exactObject(
   }
 
   for (const key of keys) {
-    if (!(key in value) && !optionalKeys.includes(key)) {
+    if (!Object.hasOwn(value, key) && !optionalKeys.includes(key)) {
       addIssue(issues, `${path}.${key}`, "is required");
     }
   }
@@ -135,6 +139,10 @@ function exactObject(
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/gu, " ").trim();
+}
+
+function containsForbiddenText(value: string, normalized: string) {
+  return FORBIDDEN_TEXT.test(normalized) || INLINE_MARKDOWN.test(normalized) || BLOCK_MARKDOWN.test(value);
 }
 
 function text(
@@ -151,7 +159,7 @@ function text(
   const normalized = normalizeWhitespace(value);
   if (!normalized) addIssue(issues, path, "must not be empty");
   if (normalized.length > limit) addIssue(issues, path, `must be at most ${limit} characters`);
-  if (FORBIDDEN_TEXT.test(normalized)) addIssue(issues, path, "must not contain markup or a URL scheme");
+  if (containsForbiddenText(value, normalized)) addIssue(issues, path, "must not contain markup or a URL scheme");
   return normalized;
 }
 
@@ -165,7 +173,7 @@ function optionalText(value: unknown, path: string, limit: number, issues: Conte
   const normalized = normalizeWhitespace(value);
   if (!normalized) return undefined;
   if (normalized.length > limit) addIssue(issues, path, `must be at most ${limit} characters`);
-  if (FORBIDDEN_TEXT.test(normalized)) addIssue(issues, path, "must not contain markup or a URL scheme");
+  if (containsForbiddenText(value, normalized)) addIssue(issues, path, "must not contain markup or a URL scheme");
   return normalized;
 }
 
