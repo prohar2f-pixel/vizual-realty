@@ -1,99 +1,69 @@
 import { randomUUID } from "node:crypto";
-import { constants } from "node:fs";
+import { constants, type Dirent, type Stats } from "node:fs";
 import {
   lstat,
-  mkdir,
   open,
   readdir,
-  realpath,
   rename,
   unlink,
   writeFile,
 } from "node:fs/promises";
-import {
-  isAbsolute,
-  join,
-  relative,
-  resolve,
-  sep,
-} from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import sharp from "sharp";
 import { db } from "./db";
+import {
+  configuredTeamUploadDirectory,
+  isCanonicalTeamImageId,
+  isContainedPath,
+  resolvePhysicalTeamUploadRoot,
+  TeamImageConfigurationError,
+} from "./team-image-files";
 import {
   parseSiteContent,
   type SiteContentV1,
 } from "./site-content/schema";
+import { withSiteContentMutationLock } from "./site-content/mutation-lock";
 
 export const TEAM_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const TEAM_IMAGE_MAX_INPUT_PIXELS = 25_000_000;
 const TEAM_IMAGE_MAX_DIMENSION = 1600;
 const ORPHAN_MINIMUM_AGE_MS = 24 * 60 * 60 * 1000;
-const UUID_V4 =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const UUID_WEBP =
   /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.webp$/;
 
-type ContentVersionsReader = () => Promise<
-  ReadonlyArray<SiteContentV1 | null | undefined>
->;
-
 type TeamImageStorageOptions = {
   uploadDirectory: string;
-  readContentVersions?: ContentVersionsReader;
+  appRoot?: string;
+  contentClient?: unknown;
+  fileSystem?: Partial<TeamImageFileSystem>;
 };
 
-export class TeamImageConfigurationError extends Error {
-  constructor() {
-    super("Team image storage is not configured");
-    this.name = "TeamImageConfigurationError";
-  }
-}
+type TeamImageFileSystem = {
+  lstat(path: string): Promise<Stats>;
+  open(path: string, flags: number): ReturnType<typeof open>;
+  readdir(
+    path: string,
+    options: { withFileTypes: true },
+  ): Promise<Dirent[]>;
+  rename(from: string, to: string): Promise<void>;
+  unlink(path: string): Promise<void>;
+  writeFile(
+    path: string,
+    data: Uint8Array,
+    options: { flag: "wx"; mode: number },
+  ): Promise<void>;
+};
+
+export {
+  isCanonicalTeamImageId,
+  TeamImageConfigurationError,
+} from "./team-image-files";
 
 export class TeamImageValidationError extends Error {
   constructor() {
     super("Team image is invalid");
     this.name = "TeamImageValidationError";
   }
-}
-
-function configuredUploadDirectory(
-  env: Record<string, string | undefined> = process.env,
-) {
-  const value = env.TEAM_UPLOAD_DIR?.trim();
-  if (!value || !isAbsolute(value)) {
-    throw new TeamImageConfigurationError();
-  }
-  const directory = resolve(value);
-  if (
-    isContainedPath(
-      resolve(/* turbopackIgnore: true */ process.cwd()),
-      directory,
-    )
-  ) {
-    throw new TeamImageConfigurationError();
-  }
-  return directory;
-}
-
-function validateUploadDirectory(value: string) {
-  if (!value || !isAbsolute(value)) {
-    throw new TeamImageConfigurationError();
-  }
-  return resolve(value);
-}
-
-function isContainedPath(root: string, candidate: string) {
-  const pathFromRoot = relative(root, candidate);
-  return (
-    pathFromRoot === "" ||
-    (!pathFromRoot.startsWith(`..${sep}`) &&
-      pathFromRoot !== ".." &&
-      !isAbsolute(pathFromRoot))
-  );
-}
-
-export function isCanonicalTeamImageId(id: string) {
-  return typeof id === "string" && UUID_V4.test(id);
 }
 
 function hasStrictPngEnvelope(bytes: Buffer) {
@@ -122,13 +92,58 @@ function hasStrictPngEnvelope(bytes: Buffer) {
 }
 
 function hasStrictJpegEnvelope(bytes: Buffer) {
-  return (
-    bytes.length >= 4 &&
-    bytes[0] === 0xff &&
-    bytes[1] === 0xd8 &&
-    bytes[bytes.length - 2] === 0xff &&
-    bytes[bytes.length - 1] === 0xd9
-  );
+  if (
+    bytes.length < 4 ||
+    bytes[0] !== 0xff ||
+    bytes[1] !== 0xd8
+  ) {
+    return false;
+  }
+
+  let offset = 2;
+  let insideEntropyData = false;
+  while (offset < bytes.length) {
+    if (insideEntropyData) {
+      while (offset < bytes.length && bytes[offset] !== 0xff) {
+        offset += 1;
+      }
+      if (offset >= bytes.length) return false;
+      const markerStart = offset;
+      while (offset < bytes.length && bytes[offset] === 0xff) {
+        offset += 1;
+      }
+      if (offset >= bytes.length) return false;
+      const marker = bytes[offset];
+      if (marker === 0x00 || (marker >= 0xd0 && marker <= 0xd7)) {
+        offset += 1;
+        continue;
+      }
+      insideEntropyData = false;
+      offset = markerStart;
+      continue;
+    }
+
+    if (bytes[offset] !== 0xff) return false;
+    while (offset < bytes.length && bytes[offset] === 0xff) {
+      offset += 1;
+    }
+    if (offset >= bytes.length) return false;
+    const marker = bytes[offset];
+    offset += 1;
+    if (marker === 0xd9) return offset === bytes.length;
+    if (marker === 0x00 || marker === 0xd8) return false;
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      continue;
+    }
+    if (offset + 2 > bytes.length) return false;
+    const segmentLength = bytes.readUInt16BE(offset);
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) {
+      return false;
+    }
+    offset += segmentLength;
+    if (marker === 0xda) insideEntropyData = true;
+  }
+  return false;
 }
 
 function hasStrictWebpEnvelope(bytes: Buffer) {
@@ -204,8 +219,17 @@ async function transformTeamImage(bytes: Uint8Array) {
   }
 }
 
-async function defaultContentVersions(): Promise<SiteContentV1[]> {
-  const row = await db.siteContent.findUnique({
+type ContentTransaction = {
+  siteContent: {
+    findUnique(args: unknown): Promise<unknown>;
+  };
+};
+
+async function loadContentVersions(
+  rawTransaction: unknown,
+): Promise<SiteContentV1[]> {
+  const transaction = rawTransaction as ContentTransaction;
+  const row = await transaction.siteContent.findUnique({
     where: { id: "site" },
     select: {
       draft: true,
@@ -213,13 +237,17 @@ async function defaultContentVersions(): Promise<SiteContentV1[]> {
       previousPublished: true,
     },
   });
-  if (!row) throw new Error("Site content is unavailable");
+  if (!row || typeof row !== "object" || Array.isArray(row)) {
+    throw new Error("Site content is unavailable");
+  }
+  const record = row as Record<string, unknown>;
   return [
-    parseSiteContent(row.draft),
-    parseSiteContent(row.published),
-    ...(row.previousPublished === null
+    parseSiteContent(record.draft),
+    parseSiteContent(record.published),
+    ...(record.previousPublished === null ||
+    record.previousPublished === undefined
       ? []
-      : [parseSiteContent(row.previousPublished)]),
+      : [parseSiteContent(record.previousPublished)]),
   ];
 }
 
@@ -239,8 +267,21 @@ export function collectReferencedImageIds(
 }
 
 export function createTeamImageStorage(options: TeamImageStorageOptions) {
-  const uploadDirectory = validateUploadDirectory(options.uploadDirectory);
-  const readContentVersions = options.readContentVersions;
+  if (!isAbsolute(options.uploadDirectory)) {
+    throw new TeamImageConfigurationError();
+  }
+  const uploadDirectory = resolve(options.uploadDirectory);
+  const appRoot = options.appRoot;
+  const contentClient = options.contentClient ?? db;
+  const fileSystem: TeamImageFileSystem = {
+    lstat,
+    open,
+    readdir,
+    rename,
+    unlink,
+    writeFile,
+    ...options.fileSystem,
+  };
 
   function resolveTeamImagePath(id: string): string | null {
     if (!isCanonicalTeamImageId(id)) return null;
@@ -254,8 +295,11 @@ export function createTeamImageStorage(options: TeamImageStorageOptions) {
   ): Promise<{ id: string; url: string }> {
     void claimedType;
     const output = await transformTeamImage(bytes);
-    await mkdir(uploadDirectory, { recursive: true });
-    const physicalRoot = await realpath(uploadDirectory);
+    const physicalRoot = await resolvePhysicalTeamUploadRoot({
+      uploadDirectory,
+      appRoot,
+      create: true,
+    });
     const id = randomUUID();
     const temporaryPath = join(
       physicalRoot,
@@ -269,18 +313,21 @@ export function createTeamImageStorage(options: TeamImageStorageOptions) {
       throw new TeamImageConfigurationError();
     }
 
-    let temporaryWasWritten = false;
     try {
-      await writeFile(temporaryPath, output, { flag: "wx", mode: 0o600 });
-      temporaryWasWritten = true;
-      await rename(temporaryPath, finalPath);
-      temporaryWasWritten = false;
+      await fileSystem.writeFile(temporaryPath, output, {
+        flag: "wx",
+        mode: 0o600,
+      });
+      await fileSystem.rename(temporaryPath, finalPath);
       return { id, url: `/api/team-images/${id}` };
-    } catch (error) {
-      if (temporaryWasWritten) {
-        await unlink(temporaryPath).catch(() => undefined);
+    } finally {
+      try {
+        await fileSystem.unlink(temporaryPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
       }
-      throw error;
     }
   }
 
@@ -288,12 +335,16 @@ export function createTeamImageStorage(options: TeamImageStorageOptions) {
     if (!isCanonicalTeamImageId(id)) return null;
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
-      const physicalRoot = await realpath(uploadDirectory);
+      const physicalRoot = await resolvePhysicalTeamUploadRoot({
+        uploadDirectory,
+        appRoot,
+        create: false,
+      });
       const candidate = resolve(physicalRoot, `${id}.webp`);
       if (!isContainedPath(physicalRoot, candidate)) return null;
-      const pathInfo = await lstat(candidate);
+      const pathInfo = await fileSystem.lstat(candidate);
       if (!pathInfo.isFile() || pathInfo.isSymbolicLink()) return null;
-      handle = await open(
+      handle = await fileSystem.open(
         candidate,
         constants.O_RDONLY | constants.O_NOFOLLOW,
       );
@@ -308,34 +359,45 @@ export function createTeamImageStorage(options: TeamImageStorageOptions) {
   }
 
   async function cleanupOrphanTeamImages(now: Date): Promise<number> {
-    if (!readContentVersions || !Number.isFinite(now.getTime())) {
+    if (!Number.isFinite(now.getTime())) {
       throw new TypeError("Cleanup dependencies are invalid");
     }
-    const references = collectReferencedImageIds(
-      await readContentVersions(),
-    );
-    const physicalRoot = await realpath(uploadDirectory);
-    const entries = await readdir(physicalRoot, { withFileTypes: true });
-    let removed = 0;
+    return withSiteContentMutationLock(
+      contentClient,
+      async (transaction) => {
+        const references = collectReferencedImageIds(
+          await loadContentVersions(transaction),
+        );
+        const physicalRoot = await resolvePhysicalTeamUploadRoot({
+          uploadDirectory,
+          appRoot,
+          create: false,
+        });
+        const entries = await fileSystem.readdir(physicalRoot, {
+          withFileTypes: true,
+        });
+        let removed = 0;
 
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      const match = UUID_WEBP.exec(entry.name);
-      if (!match || references.has(match[1])) continue;
-      const candidate = resolve(physicalRoot, entry.name);
-      if (!isContainedPath(physicalRoot, candidate)) continue;
-      const info = await lstat(candidate);
-      if (
-        !info.isFile() ||
-        info.isSymbolicLink() ||
-        now.getTime() - info.mtimeMs < ORPHAN_MINIMUM_AGE_MS
-      ) {
-        continue;
+        for (const entry of entries) {
+          if (!entry.isFile()) continue;
+          const match = UUID_WEBP.exec(entry.name);
+          if (!match || references.has(match[1])) continue;
+          const candidate = resolve(physicalRoot, entry.name);
+          if (!isContainedPath(physicalRoot, candidate)) continue;
+          const info = await fileSystem.lstat(candidate);
+          if (
+            !info.isFile() ||
+            info.isSymbolicLink() ||
+            now.getTime() - info.mtimeMs < ORPHAN_MINIMUM_AGE_MS
+          ) {
+            continue;
+          }
+          await fileSystem.unlink(candidate);
+          removed += 1;
+        }
+        return removed;
       }
-      await unlink(candidate);
-      removed += 1;
-    }
-    return removed;
+    );
   }
 
   return {
@@ -348,8 +410,8 @@ export function createTeamImageStorage(options: TeamImageStorageOptions) {
 
 function defaultStorage() {
   return createTeamImageStorage({
-    uploadDirectory: configuredUploadDirectory(),
-    readContentVersions: defaultContentVersions,
+    uploadDirectory: configuredTeamUploadDirectory(),
+    contentClient: db,
   });
 }
 

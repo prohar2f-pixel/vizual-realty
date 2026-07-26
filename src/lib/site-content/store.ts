@@ -1,6 +1,8 @@
 import { Prisma } from "../../generated/prisma/client";
 import { db } from "../db";
+import { validateConfiguredTeamImageReferences } from "../team-image-files";
 import { DEFAULT_SITE_CONTENT } from "./defaults";
+import { withSiteContentMutationLock } from "./mutation-lock";
 import { parseSiteContent, type SiteContentV1 } from "./schema";
 
 const SITE_CONTENT_ID = "site";
@@ -20,6 +22,10 @@ type SiteContentClient = {
   $transaction<T>(
     run: (transaction: unknown) => Promise<T>,
   ): Promise<T>;
+};
+
+type SiteContentStoreOptions = {
+  validateDraftImages?: (draft: SiteContentV1) => Promise<void>;
 };
 
 export type SiteContentStorageErrorCode =
@@ -115,8 +121,13 @@ async function lockContentRow(client: SiteContentClient): Promise<void> {
   `);
 }
 
-export function createSiteContentStore(client: unknown) {
+export function createSiteContentStore(
+  client: unknown,
+  options: SiteContentStoreOptions = {},
+) {
   const database = asClient(client);
+  const validateDraftImages =
+    options.validateDraftImages ?? validateConfiguredTeamImageReferences;
 
   async function getPublishedContent(): Promise<SiteContentV1> {
     try {
@@ -135,21 +146,27 @@ export function createSiteContentStore(client: unknown) {
 
   async function saveDraft(input: unknown): Promise<SiteContentV1> {
     const draft = parseSiteContent(input);
-    const row = asStoredRow(
-      await database.siteContent.update({
-        where: { id: SITE_CONTENT_ID },
-        data: {
-          draft: toInputJson(draft),
-          draftUpdatedAt: new Date(),
-        },
-        select: { draft: true },
-      }),
-    );
-    return parseStoredContent(row.draft);
+    return withSiteContentMutationLock(database, async (rawTransaction) => {
+      const transaction = asClient(rawTransaction);
+      const current = await findContentRow(transaction, { draft: true });
+      parseStoredContent(current.draft);
+      await validateDraftImages(draft);
+      const row = asStoredRow(
+        await transaction.siteContent.update({
+          where: { id: SITE_CONTENT_ID },
+          data: {
+            draft: toInputJson(draft),
+            draftUpdatedAt: new Date(),
+          },
+          select: { draft: true },
+        }),
+      );
+      return parseStoredContent(row.draft);
+    });
   }
 
   async function publishDraft(): Promise<SiteContentV1> {
-    return database.$transaction(async (rawTransaction) => {
+    return withSiteContentMutationLock(database, async (rawTransaction) => {
       const transaction = asClient(rawTransaction);
       await lockContentRow(transaction);
       const row = await findContentRow(transaction, {
@@ -174,7 +191,7 @@ export function createSiteContentStore(client: unknown) {
   }
 
   async function rollbackPublished(): Promise<SiteContentV1> {
-    return database.$transaction(async (rawTransaction) => {
+    return withSiteContentMutationLock(database, async (rawTransaction) => {
       const transaction = asClient(rawTransaction);
       await lockContentRow(transaction);
       const row = await findContentRow(transaction, {

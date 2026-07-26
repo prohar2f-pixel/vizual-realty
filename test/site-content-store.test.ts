@@ -1,8 +1,23 @@
+import { constants } from "node:fs";
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  readdir,
+  rm,
+  symlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createContentHandlers } from "../src/app/api/admin/content/route";
 import { createPublishHandler } from "../src/app/api/admin/publish/route";
 import { createRollbackHandler } from "../src/app/api/admin/rollback/route";
 import type { AdminSession } from "../src/lib/admin/session";
+import { createTeamImageReferenceValidator } from "../src/lib/team-image-files";
+import { createTeamImageStorage } from "../src/lib/team-images";
 import { DEFAULT_SITE_CONTENT } from "../src/lib/site-content/defaults";
 import {
   SiteContentValidationError,
@@ -22,6 +37,8 @@ type StoredSiteContent = {
   draftUpdatedAt: Date;
   publishedAt: Date | null;
 };
+
+const ORPHAN_IMAGE_ID = "77777777-7777-4777-8777-777777777777";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -70,11 +87,21 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
   const operations: string[] = [];
   let transactionCount = 0;
   let rowLockTail = Promise.resolve();
+  let mutationLockTail = Promise.resolve();
 
   function acquireRowLock(): Promise<() => void> {
     const previous = rowLockTail;
     let release: () => void = () => undefined;
     rowLockTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return previous.then(() => release);
+  }
+
+  function acquireMutationLock(): Promise<() => void> {
+    const previous = mutationLockTail;
+    let release: () => void = () => undefined;
+    mutationLockTail = new Promise<void>((resolve) => {
       release = resolve;
     });
     return previous.then(() => release);
@@ -134,6 +161,7 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
       transactionCount += 1;
       let working = row === null ? null : clone(row);
       let releaseRowLock: (() => void) | undefined;
+      let releaseMutationLock: (() => void) | undefined;
       const transaction = {
         ...clientFor(
           () => working,
@@ -142,10 +170,20 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
           },
           "tx.",
         ),
-        async $queryRaw<T>() {
-          operations.push("tx.$queryRaw");
-          releaseRowLock = await acquireRowLock();
-          working = row === null ? null : clone(row);
+        async $queryRaw<T>(query: unknown) {
+          const text = String(
+            (query as { strings?: readonly string[] })?.strings?.join(" ") ??
+              "",
+          );
+          if (text.includes("pg_advisory_xact_lock")) {
+            operations.push("tx.advisoryLock");
+            releaseMutationLock = await acquireMutationLock();
+            working = row === null ? null : clone(row);
+          } else {
+            operations.push("tx.rowLock");
+            releaseRowLock = await acquireRowLock();
+            working = row === null ? null : clone(row);
+          }
           return (working === null ? [] : [{ id: "site" }]) as T;
         },
       };
@@ -155,6 +193,7 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
         return result;
       } finally {
         releaseRowLock?.();
+        releaseMutationLock?.();
       }
     },
     inspect() {
@@ -173,8 +212,21 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
   };
 }
 
-afterEach(() => {
+const tempDirectories: string[] = [];
+
+async function makeTempDirectory() {
+  const directory = await mkdtemp(join(tmpdir(), "vizual-content-images-"));
+  tempDirectories.push(directory);
+  return directory;
+}
+
+afterEach(async () => {
   vi.restoreAllMocks();
+  await Promise.all(
+    tempDirectories.splice(0).map((directory) =>
+      rm(directory, { recursive: true, force: true }),
+    ),
+  );
 });
 
 describe("site content public reads", () => {
@@ -254,11 +306,98 @@ describe("site content admin reads and draft writes", () => {
     expect(after?.publishedAt).toEqual(before.publishedAt);
     expect(after?.draftUpdatedAt).toBeInstanceOf(Date);
     expect(after?.draftUpdatedAt).not.toEqual(before.draftUpdatedAt);
+    expect(client.operations).toEqual([
+      "$transaction",
+      "tx.advisoryLock",
+      "tx.findUnique",
+      "tx.update",
+    ]);
     await expect(
       store.saveDraft({ ...snapshot("Невалидный"), private: "not allowed" }),
     ).rejects.toMatchObject({
       issues: [{ path: "content.private", message: "is not allowed" }],
     });
+  });
+
+  test("rejects a draft that references a missing uploaded UUID without updating persistence", async () => {
+    const uploadDirectory = await makeTempDirectory();
+    const before = storedRow();
+    const client = createPrismaLikeClient(before);
+    const store = createSiteContentStore(client, {
+      validateDraftImages: createTeamImageReferenceValidator({
+        uploadDirectory,
+      }),
+    });
+    const input = snapshot("Черновик с отсутствующим фото");
+    input.team.members[0].imageId = ORPHAN_IMAGE_ID;
+
+    await expect(store.saveDraft(input)).rejects.toMatchObject({
+      issues: [
+        {
+          path: "team.members[0].imageId",
+          message: "uploaded image is unavailable",
+        },
+      ],
+    });
+
+    expect(client.inspect()).toEqual(before);
+    expect(client.operations).toEqual([
+      "$transaction",
+      "tx.advisoryLock",
+      "tx.findUnique",
+    ]);
+  });
+
+  test("accepts a draft UUID only when its generated WebP path is a regular file", async () => {
+    const uploadDirectory = await makeTempDirectory();
+    await writeFile(
+      join(uploadDirectory, `${ORPHAN_IMAGE_ID}.webp`),
+      "stored-image",
+    );
+    const client = createPrismaLikeClient(storedRow());
+    const store = createSiteContentStore(client, {
+      validateDraftImages: createTeamImageReferenceValidator({
+        uploadDirectory,
+      }),
+    });
+    const input = snapshot("Черновик с существующим фото");
+    input.team.members[0].imageId = ORPHAN_IMAGE_ID;
+
+    const saved = await store.saveDraft(input);
+
+    expect(saved.team.members[0].imageId).toBe(ORPHAN_IMAGE_ID);
+  });
+
+  test("rejects a draft UUID whose generated WebP path is a symlink", async () => {
+    const sandbox = await makeTempDirectory();
+    const uploadDirectory = join(sandbox, "uploads");
+    const target = join(sandbox, "outside.webp");
+    await writeFile(target, "outside-image");
+    await mkdir(uploadDirectory);
+    try {
+      await symlink(
+        target,
+        join(uploadDirectory, `${ORPHAN_IMAGE_ID}.webp`),
+        "file",
+      );
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EPERM" || code === "EACCES") return;
+      throw error;
+    }
+    const client = createPrismaLikeClient(storedRow());
+    const store = createSiteContentStore(client, {
+      validateDraftImages: createTeamImageReferenceValidator({
+        uploadDirectory,
+      }),
+    });
+    const input = snapshot("Черновик с symlink фото");
+    input.team.members[0].imageId = ORPHAN_IMAGE_ID;
+
+    await expect(store.saveDraft(input)).rejects.toBeInstanceOf(
+      SiteContentValidationError,
+    );
+    expect(client.operations).not.toContain("tx.update");
   });
 });
 
@@ -280,7 +419,8 @@ describe("site content publication history", () => {
     expect(client.transactionCount).toBe(1);
     expect(client.operations).toEqual([
       "$transaction",
-      "tx.$queryRaw",
+      "tx.advisoryLock",
+      "tx.rowLock",
       "tx.findUnique",
       "tx.update",
     ]);
@@ -319,11 +459,13 @@ describe("site content publication history", () => {
     expect(client.transactionCount).toBe(2);
     expect(client.operations).toEqual([
       "$transaction",
-      "tx.$queryRaw",
+      "tx.advisoryLock",
+      "tx.rowLock",
       "tx.findUnique",
       "tx.update",
       "$transaction",
-      "tx.$queryRaw",
+      "tx.advisoryLock",
+      "tx.rowLock",
       "tx.findUnique",
       "tx.update",
     ]);
@@ -363,9 +505,76 @@ describe("site content publication history", () => {
     expect(client.inspect()).toEqual(before);
     expect(client.operations).toEqual([
       "$transaction",
-      "tx.$queryRaw",
+      "tx.advisoryLock",
+      "tx.rowLock",
       "tx.findUnique",
     ]);
+  });
+});
+
+describe("site content image reference locking", () => {
+  test("serializes cleanup and draft save so a successful save never references a deleted image", async () => {
+    const uploadDirectory = await makeTempDirectory();
+    const imagePath = join(uploadDirectory, `${ORPHAN_IMAGE_ID}.webp`);
+    await writeFile(imagePath, "old-unreferenced-image");
+    const old = new Date("2026-07-24T00:00:00.000Z");
+    const now = new Date("2026-07-26T00:00:00.000Z");
+    await utimes(imagePath, old, old);
+    const client = createPrismaLikeClient(storedRow());
+    let releaseCleanup: () => void = () => undefined;
+    let markSnapshotRead: () => void = () => undefined;
+    const snapshotRead = new Promise<void>((resolve) => {
+      markSnapshotRead = resolve;
+    });
+    const cleanupMayContinue = new Promise<void>((resolve) => {
+      releaseCleanup = resolve;
+    });
+    const imageStorage = createTeamImageStorage({
+      uploadDirectory,
+      contentClient: client,
+      fileSystem: {
+        async readdir(path) {
+          markSnapshotRead();
+          await cleanupMayContinue;
+          return readdir(path, { withFileTypes: true });
+        },
+      },
+    });
+    const contentStore = createSiteContentStore(client, {
+      validateDraftImages: createTeamImageReferenceValidator({
+        uploadDirectory,
+      }),
+    });
+
+    const cleanup = imageStorage.cleanupOrphanTeamImages(now);
+    await snapshotRead;
+    const next = snapshot("Черновик с новым фото");
+    next.team.members[0].imageId = ORPHAN_IMAGE_ID;
+    let saveSettled = false;
+    const save = contentStore.saveDraft(next).then(
+      (content) => {
+        saveSettled = true;
+        return { ok: true as const, content };
+      },
+      (error: unknown) => {
+        saveSettled = true;
+        return { ok: false as const, error };
+      },
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(saveSettled).toBe(false);
+
+    releaseCleanup();
+
+    await expect(cleanup).resolves.toBe(1);
+    const saveResult = await save;
+    expect(saveResult.ok).toBe(false);
+    if (saveResult.ok) throw new Error("save unexpectedly succeeded");
+    expect(saveResult.error).toBeInstanceOf(SiteContentValidationError);
+    await expect(access(imagePath, constants.F_OK)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(client.inspect()?.draft).toEqual(storedRow().draft);
   });
 });
 

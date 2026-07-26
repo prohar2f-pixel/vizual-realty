@@ -3,6 +3,7 @@ import {
   access,
   lstat,
   mkdtemp,
+  mkdir,
   readFile,
   readdir,
   rm,
@@ -22,6 +23,7 @@ import type { SiteContentV1 } from "../src/lib/site-content/schema";
 import {
   collectReferencedImageIds,
   createTeamImageStorage,
+  TeamImageConfigurationError,
   TeamImageValidationError,
 } from "../src/lib/team-images";
 
@@ -64,6 +66,28 @@ function snapshot(imageId: string): SiteContentV1 {
   const content = structuredClone(DEFAULT_SITE_CONTENT);
   content.team.members[0].imageId = imageId;
   return content;
+}
+
+function contentClient(contents: SiteContentV1[]) {
+  const [draft, published, previousPublished] = contents;
+  return {
+    async $transaction<T>(run: (transaction: unknown) => Promise<T>) {
+      return run({
+        async $queryRaw() {
+          return [];
+        },
+        siteContent: {
+          async findUnique() {
+            return {
+              draft,
+              published,
+              previousPublished: previousPublished ?? null,
+            };
+          },
+        },
+      });
+    },
+  };
 }
 
 async function raster(
@@ -186,6 +210,22 @@ describe("team image storage", () => {
     await expect(readdir(uploadDirectory)).resolves.toEqual([]);
   });
 
+  test("rejects a JPEG payload hidden after its first terminal EOI", async () => {
+    const uploadDirectory = await makeTempDirectory();
+    const storage = createTeamImageStorage({ uploadDirectory });
+    const jpeg = await raster("jpeg");
+    const jpegWithPayloadAndSecondEoi = Buffer.concat([
+      jpeg,
+      Buffer.from("hidden-payload"),
+      Buffer.from([0xff, 0xd9]),
+    ]);
+
+    await expect(
+      storage.storeTeamImage(jpegWithPayloadAndSecondEoi, "image/jpeg"),
+    ).rejects.toBeInstanceOf(TeamImageValidationError);
+    await expect(readdir(uploadDirectory)).resolves.toEqual([]);
+  });
+
   test("rejects more than 10 MiB before decode and bounds input pixels", async () => {
     const uploadDirectory = await makeTempDirectory();
     const storage = createTeamImageStorage({ uploadDirectory });
@@ -228,6 +268,52 @@ describe("team image storage", () => {
     ]) {
       expect(storage.resolveTeamImagePath(id)).toBeNull();
     }
+  });
+
+  test("removes a known partial temp file when write rejects", async () => {
+    const uploadDirectory = await makeTempDirectory();
+    const storage = createTeamImageStorage({
+      uploadDirectory,
+      fileSystem: {
+        async writeFile(path, data, options) {
+          await writeFile(path, data, options);
+          throw new Error("injected-partial-write-failure");
+        },
+      },
+    });
+
+    await expect(
+      storage.storeTeamImage(await raster("png"), "image/png"),
+    ).rejects.toThrow("injected-partial-write-failure");
+    await expect(readdir(uploadDirectory)).resolves.toEqual([]);
+  });
+
+  test("rejects an external upload symlink whose physical root is inside the app root", async () => {
+    const sandbox = await makeTempDirectory();
+    const appRoot = join(sandbox, "app");
+    const physicalUpload = join(appRoot, "private-uploads");
+    const externalLink = join(sandbox, "external-upload-link");
+    await mkdir(physicalUpload, { recursive: true });
+    try {
+      await symlink(
+        physicalUpload,
+        externalLink,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EPERM" || code === "EACCES") return;
+      throw error;
+    }
+    const storage = createTeamImageStorage({
+      uploadDirectory: externalLink,
+      appRoot,
+    });
+
+    await expect(
+      storage.storeTeamImage(await raster("png"), "image/png"),
+    ).rejects.toBeInstanceOf(TeamImageConfigurationError);
+    await expect(readdir(physicalUpload)).resolves.toEqual([]);
   });
 });
 
@@ -280,7 +366,10 @@ describe("team image upload API", () => {
     expect(store).not.toHaveBeenCalled();
   });
 
-  test("hard-caps streamed multipart bytes before formData despite a lying Content-Length", async () => {
+  test.each([
+    ["absent Content-Length", undefined],
+    ["lying Content-Length", "1"],
+  ])("hard-caps 10 MiB + 1 streamed bytes before formData with %s", async (_case, contentLength) => {
     const store = vi.fn();
     const handler = createTeamImageUploadHandler({
       readSession: async () => TEST_SESSION,
@@ -292,9 +381,11 @@ describe("team image upload API", () => {
       headers: {
         origin: TEST_ORIGIN,
         "content-type": "multipart/form-data; boundary=oversized",
-        "content-length": "1",
+        ...(contentLength === undefined
+          ? {}
+          : { "content-length": contentLength }),
       },
-      body: Buffer.alloc(TEN_MIB + 64 * 1024 + 1),
+      body: Buffer.alloc(TEN_MIB + 1),
     });
     const formData = vi.spyOn(Request.prototype, "formData");
 
@@ -423,7 +514,7 @@ describe("orphan team image cleanup", () => {
     ];
     const storage = createTeamImageStorage({
       uploadDirectory,
-      readContentVersions: async () => contents,
+      contentClient: contentClient(contents),
     });
     const retainedIds = [UUIDS.draft, UUIDS.published, UUIDS.previous];
     const canonicalIds = [...retainedIds, UUIDS.orphan, UUIDS.young];
