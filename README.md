@@ -165,85 +165,101 @@ chmod 600 .env
 Публикация админ-панели выполняется только после отдельного подтверждения. Перед
 началом убедиться, что серверный worktree не содержит неожиданных изменений.
 
-### 1. Backup и фиксация точки отката
+### 1. Backup, код, миграция и seed в одном shell
 
-Один раз создать вне Git два файла режима `0600`: `/home/vizual/.pg_service.conf`
-с секцией `[vizual_backup]` (`host`, `port`, `dbname`, `user`, `sslmode`) и
-`/home/vizual/.pgpass` в формате `host:port:database:user:password`. Реальные
-значения вводятся защищённым редактором, не командой shell. Backup использует
-только имена и пути libpq; пароль и `DATABASE_URL` не попадают в `argv`.
+Весь выпуск выполняется одним непрерывным shell-процессом. Он один раз загружает
+`DATABASE_URL` из защищённого `/home/vizual/app/.env` и передаёт ту же неизменную
+переменную Prisma и безопасному wrapper для `pg_dump`/`psql`. Wrapper разбирает
+Prisma-параметр `schema=public`, передаёт libpq только производные env-переменные и
+не передаёт дочернему процессу сам URL. URL и пароль не попадают в `argv` или вывод.
+Трассировка команд принудительно выключена через `set +x`, ошибки останавливают
+сценарий. Не разбивать блок на разные терминальные сессии.
+
+Перед запуском указать только несекретный режим: `existing` для действующей базы с
+таблицами `Agent`/`Property` и без migration history; `fresh` — исключительно для
+новой пустой базы. Для живого сервера ожидается `existing`.
 
 ```bash
-set -e
+set -Eeuo pipefail
+set +x
 umask 077
 cd /home/vizual/app
+DATABASE_MODE=existing
+
+test "$(stat -c '%a' .env)" = "600"
+set -a
+. ./.env
+set +a
+: "${DATABASE_URL:?DATABASE_URL is required}"
+DB_FINGERPRINT="$(printf '%s' "$DATABASE_URL" | sha256sum | awk '{print $1}')"
+trap 'unset DATABASE_URL DB_FINGERPRINT' EXIT
+
+assert_database_unchanged() {
+  test -n "$DATABASE_URL"
+  test "$(printf '%s' "$DATABASE_URL" | sha256sum | awk '{print $1}')" = "$DB_FINGERPRINT"
+}
+
 test -z "$(git status --short)"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_DIR="/home/vizual/backups/$STAMP"
 mkdir -p "$BACKUP_DIR"
 git rev-parse HEAD > "$BACKUP_DIR/previous-commit.txt"
-PGSERVICE=vizual_backup \
-PGSERVICEFILE=/home/vizual/.pg_service.conf \
-PGPASSFILE=/home/vizual/.pgpass \
-pg_dump --format=custom --file="$BACKUP_DIR/database.dump"
+git fetch origin main
+git switch --detach origin/main
+assert_database_unchanged
+node scripts/run-postgres-tool.mjs pg_dump \
+  --format=custom --file="$BACKUP_DIR/database.dump"
 if [ -d /home/vizual/data/team-uploads ]; then
   tar -C /home/vizual/data -czf "$BACKUP_DIR/team-uploads.tgz" team-uploads
 fi
 test -s "$BACKUP_DIR/database.dump"
-```
 
-### 2. Код, uploads, env, миграция и seed
-
-Папка uploads создаётся от имени владельца приложения и остаётся вне Git. Реальные
-значения env заполняются в `/home/vizual/app/.env` до миграции и не выводятся.
-
-```bash
-set -e
-cd /home/vizual/app
-git fetch origin main
-git switch --detach origin/main
 APP_USER="$(stat -c '%U' /home/vizual/app)"
 APP_GROUP="$(stat -c '%G' /home/vizual/app)"
 install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" /home/vizual/data/team-uploads
-chmod 600 .env
 npm ci
-```
 
-Для **новой пустой базы** применить обе миграции обычным способом:
+case "$DATABASE_MODE" in
+  fresh)
+    assert_database_unchanged
+    npx prisma migrate deploy
+    ;;
+  existing)
+    assert_database_unchanged
+    node scripts/run-postgres-tool.mjs psql \
+      -X --set ON_ERROR_STOP=1 --file scripts/preflight-admin-baseline.sql
+    assert_database_unchanged
+    npx prisma migrate resolve --applied 20260710000000_initial_catalog_baseline
+    assert_database_unchanged
+    npx prisma migrate deploy
+    ;;
+  *)
+    echo "DATABASE_MODE должен быть fresh или existing" >&2
+    exit 1
+    ;;
+esac
 
-```bash
-npx prisma migrate deploy
-```
-
-Для **существующей production-базы** с таблицами `Agent` и `Property`, но без
-истории Prisma migrations, сначала выполнить строгий preflight. Только после его
-успеха один раз отметить baseline применённым и развернуть admin-миграцию:
-
-```bash
-PGSERVICE=vizual_backup \
-PGSERVICEFILE=/home/vizual/.pg_service.conf \
-PGPASSFILE=/home/vizual/.pgpass \
-psql -v ON_ERROR_STOP=1 -f scripts/preflight-admin-baseline.sql
-npx prisma migrate resolve --applied 20260710000000_initial_catalog_baseline
-npx prisma migrate deploy
-```
-
-Не выполнять `migrate resolve`, если preflight завершился ошибкой или admin-таблицы
-уже существуют. После выбранного варианта продолжить seed и сборку:
-
-```bash
+assert_database_unchanged
 npx tsx scripts/seed-admin-content.ts
 npx tsx scripts/seed-admin-content.ts
 npm run build
+unset DATABASE_URL DB_FINGERPRINT
+trap - EXIT
 pm2 restart vizual
 pm2 status
 git rev-parse --short HEAD
 ```
 
+Для `existing` preflight принимает только точную legacy-схему и отсутствующую или
+пустую `_prisma_migrations`. Не выполнять `migrate resolve`, если он завершился
+ошибкой: admin-таблицы, любая запись migration history, несовместимый тип/ключ,
+неожиданный столбец или default требуют отдельного разбора. Для `fresh` preflight и
+`resolve` не нужны: обе миграции применяет `migrate deploy`.
+
 Повторный запуск seed обязателен в репетиции и безопасен в production: существующий
 `SiteContent` и намеренно пустой список избранного не перезаписываются.
 
-### 3. Smoke test и обслуживание фотографий
+### 2. Smoke test и обслуживание фотографий
 
 Проверить `/`, `/team`, `/contacts`, `/catalog`, одну карточку объекта и вход в
 `/admin`. В админ-панели проверить поиск объекта, сохранение порядка, черновик,
@@ -260,7 +276,7 @@ cd /home/vizual/app
 ( set -a; . ./.env; set +a; ./node_modules/.bin/tsx scripts/cleanup-team-images.ts )
 ```
 
-### 4. Откат кода
+### 3. Откат кода
 
 При ошибке приложения откатить только код к записанному commit и заново собрать
 его. Новые таблицы имеют добавочную совместимую схему: миграцию назад не выполнять,
