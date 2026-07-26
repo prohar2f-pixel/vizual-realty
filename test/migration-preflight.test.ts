@@ -25,13 +25,20 @@ describe("legacy database baseline preflight", () => {
 describe("database release runbook", () => {
   const readme = readProjectFile("README.md");
 
-  test("keeps one protected DATABASE_URL in the environment for every database tool", () => {
+  test("uses one fixed orchestrator command after dependency install and build", () => {
     expect(readme).toContain("set -Eeuo pipefail");
     expect(readme).toContain("set +x");
-    expect(readme).toContain("node scripts/run-postgres-tool.mjs pg_dump");
-    expect(readme).toContain("node scripts/run-postgres-tool.mjs psql");
-    expect(readme).toContain("assert_database_unchanged");
-    expect(readme).toContain("unset DATABASE_URL DB_FINGERPRINT");
+    expect(readme).toContain(
+      'node scripts/run-postgres-tool.mjs upgrade-existing "$BACKUP_DIR/database.dump"',
+    );
+    expect(readme.indexOf("npm ci")).toBeLessThan(
+      readme.indexOf("run-postgres-tool.mjs upgrade-existing"),
+    );
+    expect(readme.indexOf("npm run build")).toBeLessThan(
+      readme.indexOf("run-postgres-tool.mjs upgrade-existing"),
+    );
+    expect(readme).not.toContain("set -a");
+    expect(readme).not.toContain(". ./.env");
     expect(readme).not.toContain("PGSERVICE=");
     expect(readme).not.toContain("PGPASSFILE=");
   });

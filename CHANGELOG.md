@@ -19,7 +19,7 @@
 - Добавлены безопасная очистка неиспользуемых фото старше 24 часов и документация backup → migration → seed → build → restart → smoke → rollback.
 - Повторяющиеся кнопки избранного и сотрудников получили уникальные доступные имена; сообщения проверки контента полностью локализованы на русский.
 - Next.js и ESLint config обновлены до 16.2.12; используемые в runtime Sharp/PostCSS и совместимый `fast-uri` закреплены на исправленных версиях. Production audit не содержит critical/high advisory.
-- Backup, preflight, Prisma resolve/deploy и seed задокументированы как один fail-fast shell с единым неизменным `DATABASE_URL`; allowlisted wrapper производит из него libpq-окружение для `pg_dump`/`psql`, без отдельного PGSERVICE, URL в дочернем окружении и секретов в аргументах или выводе.
+- Backup, preflight, Prisma resolve/deploy и seed объединены в фиксированный action `upgrade-existing`: orchestrator сам читает только `DATABASE_URL` из защищённого `.env`, не принимает параметры подключения и выдаёт каждому дочернему процессу отдельное минимальное окружение. Для пустой БД есть отдельный action `deploy-fresh`.
 
 > На живой сайт эта версия не развёртывается без отдельного подтверждения пользователя.
 

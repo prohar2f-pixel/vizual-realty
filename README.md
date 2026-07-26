@@ -165,40 +165,28 @@ chmod 600 .env
 Публикация админ-панели выполняется только после отдельного подтверждения. Перед
 началом убедиться, что серверный worktree не содержит неожиданных изменений.
 
-### 1. Backup, код, миграция и seed в одном shell
+### 1. Backup, код, миграция и seed
 
-Весь выпуск выполняется одним непрерывным shell-процессом. Он один раз загружает
-`DATABASE_URL` из защищённого `/home/vizual/app/.env` и передаёт ту же неизменную
-переменную Prisma и безопасному wrapper для `pg_dump`/`psql`. Wrapper разбирает
-Prisma-параметр `schema=public`, передаёт libpq только производные env-переменные и
-не передаёт дочернему процессу сам URL. URL и пароль не попадают в `argv` или вывод.
-Трассировка команд принудительно выключена через `set +x`, ошибки останавливают
-сценарий. Не разбивать блок на разные терминальные сессии.
+`scripts/run-postgres-tool.mjs` — не общий shell-wrapper, а фиксированный
+orchestrator выпуска. Он сам читает защищённый `.env`, выбирает только
+`DATABASE_URL`, один раз разбирает и фиксирует его, а затем последовательно и
+fail-fast выполняет только утверждённую цепочку. Shell не загружает `.env`, поэтому
+секреты не остаются в интерактивном окружении и не попадают в `argv` или вывод.
+Каждый дочерний процесс получает минимальное окружение: libpq — только производные
+`PG*`, Prisma/seed — только исходный `DATABASE_URL`, оба плюс системный минимум.
 
-Перед запуском указать только несекретный режим: `existing` для действующей базы с
-таблицами `Agent`/`Property` и без migration history; `fresh` — исключительно для
-новой пустой базы. Для живого сервера ожидается `existing`.
+Для живого сервера используется одно действие `upgrade-existing`: non-empty backup
+→ строгий preflight → baseline resolve → migrate deploy → seed дважды. Сначала без
+загрузки секретов установить зависимости и собрать код, затем одной командой
+запустить всю DB-цепочку. Не передавать orchestrator URL, host, port или другие
+параметры подключения.
 
 ```bash
 set -Eeuo pipefail
 set +x
 umask 077
 cd /home/vizual/app
-DATABASE_MODE=existing
-
 test "$(stat -c '%a' .env)" = "600"
-set -a
-. ./.env
-set +a
-: "${DATABASE_URL:?DATABASE_URL is required}"
-DB_FINGERPRINT="$(printf '%s' "$DATABASE_URL" | sha256sum | awk '{print $1}')"
-trap 'unset DATABASE_URL DB_FINGERPRINT' EXIT
-
-assert_database_unchanged() {
-  test -n "$DATABASE_URL"
-  test "$(printf '%s' "$DATABASE_URL" | sha256sum | awk '{print $1}')" = "$DB_FINGERPRINT"
-}
-
 test -z "$(git status --short)"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_DIR="/home/vizual/backups/$STAMP"
@@ -206,55 +194,26 @@ mkdir -p "$BACKUP_DIR"
 git rev-parse HEAD > "$BACKUP_DIR/previous-commit.txt"
 git fetch origin main
 git switch --detach origin/main
-assert_database_unchanged
-node scripts/run-postgres-tool.mjs pg_dump \
-  --format=custom --file="$BACKUP_DIR/database.dump"
-if [ -d /home/vizual/data/team-uploads ]; then
-  tar -C /home/vizual/data -czf "$BACKUP_DIR/team-uploads.tgz" team-uploads
-fi
-test -s "$BACKUP_DIR/database.dump"
-
 APP_USER="$(stat -c '%U' /home/vizual/app)"
 APP_GROUP="$(stat -c '%G' /home/vizual/app)"
 install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" /home/vizual/data/team-uploads
 npm ci
-
-case "$DATABASE_MODE" in
-  fresh)
-    assert_database_unchanged
-    npx prisma migrate deploy
-    ;;
-  existing)
-    assert_database_unchanged
-    node scripts/run-postgres-tool.mjs psql \
-      -X --set ON_ERROR_STOP=1 --file scripts/preflight-admin-baseline.sql
-    assert_database_unchanged
-    npx prisma migrate resolve --applied 20260710000000_initial_catalog_baseline
-    assert_database_unchanged
-    npx prisma migrate deploy
-    ;;
-  *)
-    echo "DATABASE_MODE должен быть fresh или existing" >&2
-    exit 1
-    ;;
-esac
-
-assert_database_unchanged
-npx tsx scripts/seed-admin-content.ts
-npx tsx scripts/seed-admin-content.ts
 npm run build
-unset DATABASE_URL DB_FINGERPRINT
-trap - EXIT
+if [ -d /home/vizual/data/team-uploads ]; then
+  tar -C /home/vizual/data -czf "$BACKUP_DIR/team-uploads.tgz" team-uploads
+fi
+node scripts/run-postgres-tool.mjs upgrade-existing "$BACKUP_DIR/database.dump"
+test -s "$BACKUP_DIR/database.dump"
 pm2 restart vizual
 pm2 status
 git rev-parse --short HEAD
 ```
 
-Для `existing` preflight принимает только точную legacy-схему и отсутствующую или
-пустую `_prisma_migrations`. Не выполнять `migrate resolve`, если он завершился
-ошибкой: admin-таблицы, любая запись migration history, несовместимый тип/ключ,
-неожиданный столбец или default требуют отдельного разбора. Для `fresh` preflight и
-`resolve` не нужны: обе миграции применяет `migrate deploy`.
+Orchestrator не перезаписывает существующий backup. Preflight принимает только
+точную legacy-схему и отсутствующую или пустую `_prisma_migrations`; при admin-
+таблицах, migration history или несовместимом типе/ключе цепочка останавливается до
+`resolve`. Для новой пустой базы отдельное фиксированное действие выполняет только
+`migrate deploy` и seed дважды: `node scripts/run-postgres-tool.mjs deploy-fresh`.
 
 Повторный запуск seed обязателен в репетиции и безопасен в production: существующий
 `SiteContent` и намеренно пустой список избранного не перезаписываются.
@@ -273,7 +232,7 @@ git rev-parse --short HEAD
 
 ```bash
 cd /home/vizual/app
-( set -a; . ./.env; set +a; ./node_modules/.bin/tsx scripts/cleanup-team-images.ts )
+node --env-file=.env --import tsx scripts/cleanup-team-images.ts
 ```
 
 ### 3. Откат кода
