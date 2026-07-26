@@ -147,6 +147,10 @@ test("renders three selected cards, ordering controls, search and disabled add",
   expect((html.match(/>Выше</g) ?? [])).toHaveLength(3);
   expect((html.match(/>Ниже</g) ?? [])).toHaveLength(3);
   expect((html.match(/>Убрать</g) ?? [])).toHaveLength(3);
+  expect(html).toContain('aria-label="Переместить объект Объект a, ID a выше"');
+  expect(html).toContain('aria-label="Переместить объект Объект b, ID b ниже"');
+  expect(html).toContain('aria-label="Убрать объект Объект c, ID c из избранного"');
+  expect(html).toContain('aria-label="Добавить объект Объект available, ID available в избранное"');
   expect(html).toContain("Поиск по ID, названию, адресу или городу");
   expect(html).toMatch(/<button[^>]*disabled[^>]*>Добавить<\/button>/);
   expect(html).toContain("Сохранить");

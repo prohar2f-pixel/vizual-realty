@@ -125,6 +125,7 @@ export function TeamMemberEditor({
   const [uploadError, setUploadError] = useState("");
   const basePath = `team.members[${index}]`;
   const displayName = member.name.trim() || `Сотрудник ${index + 1}`;
+  const controlName = `сотрудника ${index + 1}: ${displayName}`;
   const previewUrl = teamImagePreviewUrl(member.imageId);
   const locked = disabled || uploading;
   const cardIssues = memberIssueMessages(issues, basePath);
@@ -177,7 +178,7 @@ export function TeamMemberEditor({
           <button
             type="button"
             disabled={locked || index === 0}
-            aria-label={`Переместить ${displayName} выше`}
+            aria-label={`Переместить ${controlName} выше`}
             onClick={() => onMove(-1)}
             className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -186,7 +187,7 @@ export function TeamMemberEditor({
           <button
             type="button"
             disabled={locked || index === total - 1}
-            aria-label={`Переместить ${displayName} ниже`}
+            aria-label={`Переместить ${controlName} ниже`}
             onClick={() => onMove(1)}
             className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -197,7 +198,7 @@ export function TeamMemberEditor({
             disabled={locked}
             aria-label={`${
               member.isVisible ? "Скрыть" : "Восстановить"
-            } сотрудника ${displayName}`}
+            } ${controlName}`}
             onClick={() => onVisibilityChange(!member.isVisible)}
             className="min-h-11 rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-40"
           >

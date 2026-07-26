@@ -244,6 +244,10 @@ function PropertySummary({ item }: { item: PropertyCardData }) {
   );
 }
 
+function propertyControlName(item: PropertyCardData) {
+  return `объект ${item.title}, ID ${item.shortId ?? item.id}`;
+}
+
 type FeaturedEditorProps = {
   initialItems: AdminFeaturedPropertyCardData[];
   initialSearch?: PropertySearchResult;
@@ -381,6 +385,7 @@ export function FeaturedEditor({
                   <button
                     type="button"
                     disabled={state.saving || index === 0}
+                    aria-label={`Переместить ${propertyControlName(item)} выше`}
                     onClick={() => dispatch({ type: "move", id: item.id, direction: -1 })}
                     className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
                   >
@@ -391,6 +396,7 @@ export function FeaturedEditor({
                     disabled={
                       state.saving || index === state.selected.length - 1
                     }
+                    aria-label={`Переместить ${propertyControlName(item)} ниже`}
                     onClick={() => dispatch({ type: "move", id: item.id, direction: 1 })}
                     className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
                   >
@@ -399,6 +405,7 @@ export function FeaturedEditor({
                   <button
                     type="button"
                     disabled={state.saving}
+                    aria-label={`Убрать ${propertyControlName(item)} из избранного`}
                     onClick={() => dispatch({ type: "remove", id: item.id })}
                     className="min-h-11 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-800"
                   >
@@ -468,6 +475,7 @@ export function FeaturedEditor({
                   disabled={
                     state.saving || state.selected.length >= 3 || alreadySelected
                   }
+                  aria-label={`Добавить ${propertyControlName(item)} в избранное`}
                   onClick={() => dispatch({ type: "add", item })}
                   className="min-h-11 shrink-0 rounded-lg border border-brand px-4 py-2 font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-40"
                 >

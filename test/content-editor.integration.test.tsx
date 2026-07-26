@@ -219,6 +219,53 @@ test("routes an exact server issue to the mounted field", async () => {
 });
 
 describe.each([
+  ["must be an object", "Данные должны быть объектом."],
+  ["is not allowed", "Это поле не разрешено."],
+  ["is required", "Обязательное поле."],
+  ["must be a string", "Значение должно быть текстом."],
+  [
+    "must not contain markup or a URL scheme",
+    "HTML, Markdown и ссылки с протоколом запрещены.",
+  ],
+  [
+    "must contain only phone characters",
+    "Используйте только цифры и допустимые символы телефона.",
+  ],
+  [
+    "must be a Telegram username or https://t.me URL",
+    "Укажите имя пользователя Telegram или ссылку t.me.",
+  ],
+  [
+    "must be a lowercase hyphenated identifier",
+    "ID должен содержать строчные латинские буквы, цифры и дефисы.",
+  ],
+  ["must be an array", "Значение должно быть списком."],
+  ["must be a boolean", "Выберите допустимое состояние."],
+  ["must equal 1", "Неподдерживаемая версия данных."],
+])("schema issue %s", (serverMessage, russianMessage) => {
+  test("is shown to the administrator in Russian", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            ok: false,
+            issues: [{ path: "home.heroTitle", message: serverMessage }],
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const container = await mountEditor();
+    await changeValue(input(container, "home.heroTitle"), "Изменённый текст");
+    await click(button(container, "Сохранить изменения"));
+
+    expect(container.textContent).toContain(russianMessage);
+    expect(container.textContent).not.toContain(serverMessage);
+  });
+});
+
+describe.each([
   ["home.benefits", "home.benefits", "Главная", 1],
   ["home.benefits[0]", "home.benefits", "Главная", 1],
   ["about.introduction", "about.introduction", "О нас", 1],

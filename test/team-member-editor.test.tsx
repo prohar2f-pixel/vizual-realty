@@ -99,8 +99,12 @@ test("renders named accessible employee controls without physical deletion", () 
     expect(html).toContain(label);
   }
   expect(html).toContain('alt="Аянот Елена"');
-  expect(html).toContain('aria-label="Переместить Аянот Елена выше"');
-  expect(html).toContain('aria-label="Скрыть сотрудника Аянот Елена"');
+  expect(html).toContain(
+    'aria-label="Переместить сотрудника 1: Аянот Елена выше"',
+  );
+  expect(html).toContain(
+    'aria-label="Скрыть сотрудника 1: Аянот Елена"',
+  );
   expect(html).toContain("Скрыть сотрудника");
   expect(html).not.toContain("Удалить сотрудника");
 });
@@ -122,7 +126,7 @@ test("offers restoration for a hidden employee", () => {
 
   expect(html).toContain("Восстановить сотрудника");
   expect(html).toContain(
-    'aria-label="Восстановить сотрудника Аянот Елена"',
+    'aria-label="Восстановить сотрудника 1: Аянот Елена"',
   );
   expect(html).toContain("Скрыт с сайта");
 });

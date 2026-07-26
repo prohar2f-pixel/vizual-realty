@@ -50,6 +50,21 @@ test("protects the admin route group before rendering children and marks it noin
   expect(metadata.robots).toEqual({ index: false, follow: false });
 });
 
+test("does not render protected children when the admin session is missing", async () => {
+  const renderChild = vi.fn();
+  function ProtectedChild() {
+    renderChild();
+    return <h1>Секретный предпросмотр</h1>;
+  }
+  requireAdminSession.mockRejectedValueOnce(new Error("unauthorized"));
+
+  await expect(
+    AdminProtectedLayout({ children: <ProtectedChild /> }),
+  ).rejects.toThrow("unauthorized");
+
+  expect(renderChild).not.toHaveBeenCalled();
+});
+
 test("configures private no-store and noindex headers for admin responses", async () => {
   const headers = await nextConfig.headers?.();
 

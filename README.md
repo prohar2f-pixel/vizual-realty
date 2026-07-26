@@ -84,20 +84,170 @@ npm run dev -- -p 3100
 
 Доступно на http://localhost:3100. На Windows используйте `npm.cmd` вместо `npm`.
 
-## Как развернуть на сервер
+## Админ-панель
+
+Закрытая страница `/admin` позволяет:
+
+- выбрать и упорядочить от одного до трёх избранных объектов;
+- менять тексты публичных страниц через черновик и предпросмотр;
+- редактировать, упорядочивать и скрывать карточки сотрудников без физического удаления;
+- загружать JPG, PNG или WebP до 10 МБ;
+- публиковать черновик и один раз откатывать опубликованную версию.
+
+Обязательные серверные переменные перечислены в `.env.example`. Реальные значения
+`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `DATABASE_URL` и
+`TOPNLAB_KEY` должны находиться только в защищённом `.env` сервера. `SITE_ORIGIN`
+задаётся как точный HTTPS-origin без завершающего слеша, а `TEAM_UPLOAD_DIR` — как
+абсолютная постоянная папка вне Git и `/home/vizual/app`.
+
+### Создание scrypt-хеша без вывода пароля
+
+Следующий код запускается из `/home/vizual/app`. Ввод пароля скрыт; пароль и
+полученный хеш не выводятся и не попадают в аргументы процесса. Скрипт обновляет
+только строку `ADMIN_PASSWORD_HASH` в защищённом `.env`.
 
 ```bash
-# На сервере (через SSH)
+cd /home/vizual/app
+umask 077
+read -r -s -p "Новый пароль администратора: " ADMIN_PASSWORD_PLAIN
+printf '\n'
+export ADMIN_PASSWORD_PLAIN
+node <<'NODE'
+const { randomBytes, scryptSync } = require("node:crypto");
+const { existsSync, readFileSync, writeFileSync } = require("node:fs");
+const password = process.env.ADMIN_PASSWORD_PLAIN;
+if (!password) process.exit(1);
+const N = 16384, r = 8, p = 1;
+const salt = randomBytes(32);
+const hash = scryptSync(password, salt, 32, {
+  N, r, p, maxmem: 128 * N * r + 2 * 1024 * 1024,
+});
+const encoded = `scrypt$${N}$${r}$${p}$${salt.toString("base64")}$${hash.toString("base64")}`;
+const path = ".env";
+const current = existsSync(path) ? readFileSync(path, "utf8") : "";
+const line = `ADMIN_PASSWORD_HASH="${encoded}"`;
+const next = /^ADMIN_PASSWORD_HASH=.*$/m.test(current)
+  ? current.replace(/^ADMIN_PASSWORD_HASH=.*$/m, line)
+  : `${current.trimEnd()}${current.trim() ? "\n" : ""}${line}\n`;
+writeFileSync(path, next, { mode: 0o600 });
+NODE
+unset ADMIN_PASSWORD_PLAIN
+chmod 600 .env
+```
+
+`ADMIN_SESSION_SECRET` создаётся отдельно криптографическим генератором и также
+записывается прямо в `.env`, без вывода в терминал:
+
+```bash
+cd /home/vizual/app
+umask 077
+node <<'NODE'
+const { randomBytes } = require("node:crypto");
+const { existsSync, readFileSync, writeFileSync } = require("node:fs");
+const path = ".env";
+const current = existsSync(path) ? readFileSync(path, "utf8") : "";
+const line = `ADMIN_SESSION_SECRET="${randomBytes(48).toString("base64")}"`;
+const next = /^ADMIN_SESSION_SECRET=.*$/m.test(current)
+  ? current.replace(/^ADMIN_SESSION_SECRET=.*$/m, line)
+  : `${current.trimEnd()}${current.trim() ? "\n" : ""}${line}\n`;
+writeFileSync(path, next, { mode: 0o600 });
+NODE
+chmod 600 .env
+```
+
+Остальные значения редактируются непосредственно в защищённом `.env`, без
+передачи секретов в историю shell. Перед запуском проверить, что Nginx ограничивает
+тело `/api/admin/login` небольшим значением (например, 16 КиБ), но разрешает до
+11 МиБ для `/api/admin/team-images`.
+
+## Безопасное развёртывание на сервер
+
+Публикация админ-панели выполняется только после отдельного подтверждения. Перед
+началом убедиться, что серверный worktree не содержит неожиданных изменений.
+
+### 1. Backup и фиксация точки отката
+
+```bash
+set -e
+umask 077
+cd /home/vizual/app
+test -z "$(git status --short)"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+BACKUP_DIR="/home/vizual/backups/$STAMP"
+mkdir -p "$BACKUP_DIR"
+git rev-parse HEAD > "$BACKUP_DIR/previous-commit.txt"
+( set -a; . ./.env; set +a; pg_dump --format=custom --file="$BACKUP_DIR/database.dump" "$DATABASE_URL" )
+if [ -d /home/vizual/data/team-uploads ]; then
+  tar -C /home/vizual/data -czf "$BACKUP_DIR/team-uploads.tgz" team-uploads
+fi
+test -s "$BACKUP_DIR/database.dump"
+```
+
+### 2. Код, uploads, env, миграция и seed
+
+Папка uploads создаётся от имени владельца приложения и остаётся вне Git. Реальные
+значения env заполняются в `/home/vizual/app/.env` до миграции и не выводятся.
+
+```bash
 set -e
 cd /home/vizual/app
 git fetch origin main
-git checkout origin/main -- src public package.json package-lock.json
+git switch --detach origin/main
+APP_USER="$(stat -c '%U' /home/vizual/app)"
+APP_GROUP="$(stat -c '%G' /home/vizual/app)"
+install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" /home/vizual/data/team-uploads
+chmod 600 .env
+npm ci
+npx prisma migrate deploy
+npx tsx scripts/seed-admin-content.ts
+npx tsx scripts/seed-admin-content.ts
+npm run build
+pm2 restart vizual
+pm2 status
+git rev-parse --short HEAD
+```
+
+Повторный запуск seed обязателен в репетиции и безопасен в production: существующий
+`SiteContent` и намеренно пустой список избранного не перезаписываются.
+
+### 3. Smoke test и обслуживание фотографий
+
+Проверить `/`, `/team`, `/contacts`, `/catalog`, одну карточку объекта и вход в
+`/admin`. В админ-панели проверить поиск объекта, сохранение порядка, черновик,
+предпросмотр, загрузку тестовой фотографии, публикацию и доступность обратного
+отката. После проверки скрыть тестовые данные и не оставлять тестовый файл в
+публикации.
+
+Очистка удаляет только неиспользуемые файлы старше 24 часов. Запускать ежедневно
+из каталога приложения с загруженным `.env`, например отдельной cron-задачей
+владельца процесса PM2:
+
+```bash
+cd /home/vizual/app
+( set -a; . ./.env; set +a; ./node_modules/.bin/tsx scripts/cleanup-team-images.ts )
+```
+
+### 4. Откат кода
+
+При ошибке приложения откатить только код к записанному commit и заново собрать
+его. Новые таблицы имеют добавочную совместимую схему: миграцию назад не выполнять,
+`SiteContent`, опубликованные данные и uploads не удалять.
+
+```bash
+set -e
+cd /home/vizual/app
+PREVIOUS_COMMIT="$(cat /home/vizual/backups/<UTC-папка>/previous-commit.txt)"
+git switch --detach "$PREVIOUS_COMMIT"
+npm ci
 npm run build
 pm2 restart vizual
 pm2 status
 ```
 
-Подробный безопасный порядок публикации и особенности терминала Beget описаны в [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md).
+Восстановление `database.dump` или `team-uploads.tgz` выполняется только при
+подтверждённом повреждении данных и после остановки записи: оно может уничтожить
+изменения, появившиеся после backup. Подробности окружения Beget находятся в
+[PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md).
 
 ## Живой сайт
 

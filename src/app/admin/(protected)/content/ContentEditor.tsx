@@ -491,10 +491,25 @@ function tabForIssue(path: string): ContentTab {
 
 function localizedIssue(message: string) {
   const exact: Record<string, string> = {
+    "must be an object": "Данные должны быть объектом.",
+    "is not allowed": "Это поле не разрешено.",
+    "is required": "Обязательное поле.",
+    "must be a string": "Значение должно быть текстом.",
     "must not be empty": "Поле не должно быть пустым.",
+    "must not contain markup or a URL scheme":
+      "HTML, Markdown и ссылки с протоколом запрещены.",
+    "must contain only phone characters":
+      "Используйте только цифры и допустимые символы телефона.",
     "must be a valid email address": "Укажите корректный E-mail.",
     "must be a valid phone number": "Укажите корректный номер телефона.",
+    "must be a Telegram username or https://t.me URL":
+      "Укажите имя пользователя Telegram или ссылку t.me.",
     "must contain digits only": "Допустимы только цифры.",
+    "must be a lowercase hyphenated identifier":
+      "ID должен содержать строчные латинские буквы, цифры и дефисы.",
+    "must be an array": "Значение должно быть списком.",
+    "must be a boolean": "Выберите допустимое состояние.",
+    "must equal 1": "Неподдерживаемая версия данных.",
     "must be unique": "Значение должно быть уникальным.",
     "must be unique when present": "Значение должно быть уникальным.",
     "visible members must provide a phone, email, or Telegram contact":

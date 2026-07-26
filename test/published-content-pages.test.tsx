@@ -170,7 +170,7 @@ test("object page uses the visible published member with the exact Topnlab ID", 
     phone: "+7 (949) 222-33-44",
     telegram: "published_manager",
     imageId: uploadedImageId,
-    topnlabAgentId: "agent-exact",
+    topnlabAgentId: "296892",
     isVisible: true,
   };
   getPublishedContent.mockResolvedValue(published);
@@ -187,7 +187,7 @@ test("object page uses the visible published member with the exact Topnlab ID", 
     description: null,
     photos: [],
     agent: {
-      id: "agent-exact",
+      id: "296892",
       name: "Имя из CRM",
       phone: "+7 (949) 000-00-00",
       photoUrl: "/crm/photo.webp",
