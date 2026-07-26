@@ -3,7 +3,13 @@ import { scrypt, timingSafeEqual } from "node:crypto";
 const DEFAULT_SESSION_TTL_HOURS = 12;
 const MIN_SESSION_SECRET_BYTES = 32;
 const MAX_PASSWORD_BYTES = 4_096;
-const MAX_SCRYPT_MEMORY = 512 * 1024 * 1024;
+const MIN_SCRYPT_N = 2 ** 14;
+const MAX_SCRYPT_N = 2 ** 16;
+const MIN_SCRYPT_MEMORY = 16 * 1024 * 1024;
+const MAX_SCRYPT_MEMORY = 64 * 1024 * 1024;
+const MIN_SCRYPT_WORK = 2 ** 17;
+const MAX_SCRYPT_WORK = 2 ** 21;
+const SCRYPT_MEMORY_HEADROOM = 2 * 1024 * 1024;
 
 export type AdminAuthConfig = {
   username: string;
@@ -118,27 +124,35 @@ function parseScryptHash(encoded: string): ScryptHash | null {
   const expected = decodeBase64(hashText ?? "");
   if (
     !Number.isSafeInteger(N) ||
-    N < 2 ||
-    N > 1_048_576 ||
+    N < MIN_SCRYPT_N ||
+    N > MAX_SCRYPT_N ||
     (N & (N - 1)) !== 0 ||
     !Number.isSafeInteger(r) ||
     r < 1 ||
-    r > 32 ||
+    r > 8 ||
     !Number.isSafeInteger(p) ||
     p < 1 ||
-    p > 16 ||
+    p > 4 ||
     !salt ||
-    salt.length < 8 ||
-    salt.length > 1_024 ||
+    salt.length < 16 ||
+    salt.length > 64 ||
     !expected ||
-    expected.length < 16 ||
-    expected.length > 128
+    expected.length < 32 ||
+    expected.length > 64
   ) {
     return null;
   }
 
-  const requiredMemory = 128 * N * r + 128 * r * p + 1024 * 1024;
-  if (!Number.isSafeInteger(requiredMemory) || requiredMemory > MAX_SCRYPT_MEMORY) {
+  const memoryCost = 128 * N * r;
+  const work = N * r * p;
+  if (
+    !Number.isSafeInteger(memoryCost) ||
+    memoryCost < MIN_SCRYPT_MEMORY ||
+    memoryCost > MAX_SCRYPT_MEMORY ||
+    !Number.isSafeInteger(work) ||
+    work < MIN_SCRYPT_WORK ||
+    work > MAX_SCRYPT_WORK
+  ) {
     return null;
   }
 
@@ -148,8 +162,12 @@ function parseScryptHash(encoded: string): ScryptHash | null {
     p,
     salt,
     expected,
-    maxmem: Math.max(32 * 1024 * 1024, requiredMemory),
+    maxmem: memoryCost + SCRYPT_MEMORY_HEADROOM,
   };
+}
+
+export function isSupportedAdminScryptHash(encoded: string): boolean {
+  return typeof encoded === "string" && parseScryptHash(encoded) !== null;
 }
 
 export async function verifyAdminPassword(

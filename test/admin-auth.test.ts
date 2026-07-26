@@ -4,12 +4,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   AdminConfigurationError,
+  isSupportedAdminScryptHash,
   readAdminAuthConfig,
   verifyAdminPassword,
 } from "../src/lib/admin/auth";
 import { AdminRequestError, assertTrustedOrigin } from "../src/lib/admin/request";
 import { unsealSession, type AdminSession } from "../src/lib/admin/session";
-import { createLoginHandler } from "../src/app/api/admin/login/route";
+import {
+  createLoginHandler,
+  resetLoginRateLimitsForTests,
+} from "../src/app/api/admin/login/route";
 import { createLogoutHandler } from "../src/app/api/admin/logout/route";
 import { LoginPageView } from "../src/app/admin/login/page";
 
@@ -29,14 +33,26 @@ const TEST_ORIGIN = "https://admin.test.invalid";
 const TEST_NOW = Date.parse("2026-07-26T08:00:00.000Z");
 
 async function makeTestHash(password = TEST_PASSWORD) {
-  const salt = Buffer.from("fixed-test-salt", "utf8");
+  const salt = Buffer.from("fixed-test-salt!", "utf8");
   const derived = await new Promise<Buffer>((resolve, reject) => {
-    scryptCallback(password, salt, 32, { N: 1024, r: 8, p: 1 }, (error, key) => {
+    scryptCallback(password, salt, 32, { N: 16_384, r: 8, p: 1 }, (error, key) => {
       if (error) reject(error);
       else resolve(key as Buffer);
     });
   });
-  return `scrypt$1024$8$1$${salt.toString("base64")}$${derived.toString("base64")}`;
+  return `scrypt$16384$8$1$${salt.toString("base64")}$${derived.toString("base64")}`;
+}
+
+function encodedHash(options: {
+  N: number;
+  r: number;
+  p: number;
+  saltBytes: number;
+  hashBytes: number;
+}) {
+  const salt = Buffer.alloc(options.saltBytes, 0x5a).toString("base64");
+  const hash = Buffer.alloc(options.hashBytes, 0xa5).toString("base64");
+  return `scrypt$${options.N}$${options.r}$${options.p}$${salt}$${hash}`;
 }
 
 function testConfig(passwordHash: string) {
@@ -62,6 +78,31 @@ function loginRequest(username: string, password: string, origin = TEST_ORIGIN) 
 }
 
 describe("admin password and configuration", () => {
+  test("accepts standard and maximum supported scrypt cost boundaries", () => {
+    expect(
+      isSupportedAdminScryptHash(
+        encodedHash({ N: 16_384, r: 8, p: 1, saltBytes: 16, hashBytes: 32 }),
+      ),
+    ).toBe(true);
+    expect(
+      isSupportedAdminScryptHash(
+        encodedHash({ N: 65_536, r: 8, p: 4, saltBytes: 64, hashBytes: 64 }),
+      ),
+    ).toBe(true);
+  });
+
+  test.each([
+    ["weak work factor", { N: 2, r: 1, p: 1, saltBytes: 16, hashBytes: 32 }],
+    ["short salt", { N: 16_384, r: 8, p: 1, saltBytes: 15, hashBytes: 32 }],
+    ["long salt", { N: 16_384, r: 8, p: 1, saltBytes: 65, hashBytes: 32 }],
+    ["short hash", { N: 16_384, r: 8, p: 1, saltBytes: 16, hashBytes: 31 }],
+    ["long hash", { N: 16_384, r: 8, p: 1, saltBytes: 16, hashBytes: 65 }],
+    ["excessive work", { N: 65_536, r: 8, p: 5, saltBytes: 16, hashBytes: 32 }],
+    ["excessive memory", { N: 131_072, r: 8, p: 1, saltBytes: 16, hashBytes: 32 }],
+  ])("rejects %s before password derivation", (_name, options) => {
+    expect(isSupportedAdminScryptHash(encodedHash(options))).toBe(false);
+  });
+
   test("accepts only the correct password for the encoded scrypt hash", async () => {
     const hash = await makeTestHash();
 
@@ -266,6 +307,67 @@ describe("admin login and logout routes", () => {
     }
 
     expect(keys).toEqual(["203.0.113.10", "203.0.113.10"]);
+  });
+
+  test("blocks the fifty-first attempt globally even when the real IP rotates", async () => {
+    resetLoginRateLimitsForTests();
+    const verifyPassword = vi.fn(async () => false);
+    const handler = createLoginHandler({
+      readConfig: () => testConfig(TEST_HASH_PLACEHOLDER),
+      getCookieStore: async () => ({ set: vi.fn() }),
+      verifyPassword,
+      now: () => TEST_NOW,
+    });
+
+    try {
+      const responses: Response[] = [];
+      for (let attempt = 1; attempt <= 51; attempt += 1) {
+        const request = loginRequest("test-admin", TEST_PASSWORD);
+        request.headers.set("x-real-ip", `203.0.113.${attempt}`);
+        responses.push(await handler(request));
+      }
+
+      expect(responses.slice(0, 50).every((response) => response.status === 401)).toBe(true);
+      expect(responses[50].status).toBe(429);
+      const blockedBody = await responses[50].text();
+      expect(blockedBody).not.toContain("test-admin");
+      expect(blockedBody).not.toContain(TEST_PASSWORD);
+      expect(verifyPassword).toHaveBeenCalledTimes(50);
+
+      resetLoginRateLimitsForTests();
+      const afterReset = loginRequest("test-admin", TEST_PASSWORD);
+      afterReset.headers.set("x-real-ip", "203.0.113.51");
+      expect((await handler(afterReset)).status).toBe(401);
+    } finally {
+      resetLoginRateLimitsForTests();
+    }
+  });
+
+  test("reset helper also clears the per-source bucket", async () => {
+    resetLoginRateLimitsForTests();
+    const handler = createLoginHandler({
+      readConfig: () => testConfig(TEST_HASH_PLACEHOLDER),
+      getCookieStore: async () => ({ set: vi.fn() }),
+      verifyPassword: async () => false,
+      now: () => TEST_NOW,
+    });
+
+    try {
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const request = loginRequest("test-admin", TEST_PASSWORD);
+        request.headers.set("x-real-ip", "203.0.113.200");
+        statuses.push((await handler(request)).status);
+      }
+      expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
+
+      resetLoginRateLimitsForTests();
+      const afterReset = loginRequest("test-admin", TEST_PASSWORD);
+      afterReset.headers.set("x-real-ip", "203.0.113.200");
+      expect((await handler(afterReset)).status).toBe(401);
+    } finally {
+      resetLoginRateLimitsForTests();
+    }
   });
 
   test("rejects login and logout from an untrusted origin", async () => {

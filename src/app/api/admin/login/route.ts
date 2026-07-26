@@ -13,7 +13,29 @@ import {
 } from "../../../../lib/rate-limit";
 
 const INVALID_CREDENTIALS = "Неверный логин или пароль";
-const loginLimiter = new FixedWindowRateLimiter(5, 15 * 60 * 1_000);
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1_000;
+let sourceLoginLimiter = new FixedWindowRateLimiter(5, LOGIN_RATE_WINDOW_MS);
+let globalLoginLimiter = new FixedWindowRateLimiter(50, LOGIN_RATE_WINDOW_MS);
+
+function consumeLoginAttempt(key: string, now: number): RateLimitDecision {
+  const source = sourceLoginLimiter.consume(key, now);
+  const global = globalLoginLimiter.consume("global", now);
+  if (source.allowed && global.allowed) {
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  return {
+    allowed: false,
+    retryAfterSeconds: Math.max(
+      source.allowed ? 0 : source.retryAfterSeconds,
+      global.allowed ? 0 : global.retryAfterSeconds,
+    ),
+  };
+}
+
+export function resetLoginRateLimitsForTests() {
+  sourceLoginLimiter = new FixedWindowRateLimiter(5, LOGIN_RATE_WINDOW_MS);
+  globalLoginLimiter = new FixedWindowRateLimiter(50, LOGIN_RATE_WINDOW_MS);
+}
 
 type Cookie = {
   name: string;
@@ -37,7 +59,7 @@ type LoginDependencies = {
 const defaultDependencies: LoginDependencies = {
   readConfig: readAdminAuthConfig,
   getCookieStore: cookies,
-  consumeAttempt: (key, now) => loginLimiter.consume(key, now),
+  consumeAttempt: consumeLoginAttempt,
   verifyPassword: verifyAdminPassword,
   now: Date.now,
 };
