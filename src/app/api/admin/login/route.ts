@@ -19,17 +19,8 @@ let globalLoginLimiter = new FixedWindowRateLimiter(50, LOGIN_RATE_WINDOW_MS);
 
 function consumeLoginAttempt(key: string, now: number): RateLimitDecision {
   const source = sourceLoginLimiter.consume(key, now);
-  const global = globalLoginLimiter.consume("global", now);
-  if (source.allowed && global.allowed) {
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-  return {
-    allowed: false,
-    retryAfterSeconds: Math.max(
-      source.allowed ? 0 : source.retryAfterSeconds,
-      global.allowed ? 0 : global.retryAfterSeconds,
-    ),
-  };
+  if (!source.allowed) return source;
+  return globalLoginLimiter.consume("global", now);
 }
 
 export function resetLoginRateLimitsForTests() {

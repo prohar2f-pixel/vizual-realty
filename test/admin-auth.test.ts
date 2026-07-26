@@ -370,6 +370,34 @@ describe("admin login and logout routes", () => {
     }
   });
 
+  test("source-blocked attempts do not exhaust the global bucket", async () => {
+    resetLoginRateLimitsForTests();
+    const handler = createLoginHandler({
+      readConfig: () => testConfig(TEST_HASH_PLACEHOLDER),
+      getCookieStore: async () => ({ set: vi.fn() }),
+      verifyPassword: async () => false,
+      now: () => TEST_NOW,
+    });
+
+    try {
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < 55; attempt += 1) {
+        const request = loginRequest("test-admin", TEST_PASSWORD);
+        request.headers.set("x-real-ip", "203.0.113.210");
+        statuses.push((await handler(request)).status);
+      }
+
+      expect(statuses.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);
+      expect(statuses.slice(5).every((status) => status === 429)).toBe(true);
+
+      const otherSource = loginRequest("test-admin", TEST_PASSWORD);
+      otherSource.headers.set("x-real-ip", "203.0.113.211");
+      expect((await handler(otherSource)).status).toBe(401);
+    } finally {
+      resetLoginRateLimitsForTests();
+    }
+  });
+
   test("rejects login and logout from an untrusted origin", async () => {
     const login = createLoginHandler({
       readConfig: () => testConfig(TEST_HASH_PLACEHOLDER),
