@@ -13,11 +13,13 @@ type EditorState = {
   savedIds: string[];
   results: PropertyCardData[];
   query: string;
+  activeQuery: string;
   page: number;
   total: number;
   pageSize: number;
   searching: boolean;
   saving: boolean;
+  pendingSaveIds: string[] | null;
   error: string;
   dirty: boolean;
 };
@@ -27,11 +29,15 @@ type EditorAction =
   | { type: "remove"; id: string }
   | { type: "add"; item: PropertyCardData }
   | { type: "set-query"; query: string }
-  | { type: "search-start" }
+  | { type: "search-start"; query: string }
   | { type: "search-success"; result: PropertySearchResult }
   | { type: "search-error"; error: string }
-  | { type: "save-start" }
-  | { type: "save-success"; items: AdminFeaturedPropertyCardData[] }
+  | { type: "save-start"; submittedIds: string[] }
+  | {
+      type: "save-success";
+      submittedIds: string[];
+      items: AdminFeaturedPropertyCardData[];
+    }
   | { type: "save-error"; error: string };
 
 function idsMatch(left: string[], right: string[]) {
@@ -60,11 +66,13 @@ export function createEditorState(
     savedIds: initialItems.map(({ id }) => id),
     results: initialSearch?.items ?? [],
     query: "",
+    activeQuery: "",
     page: initialSearch?.page ?? 1,
     total: initialSearch?.total ?? 0,
     pageSize: initialSearch?.pageSize ?? 20,
     searching: false,
     saving: false,
+    pendingSaveIds: null,
     error: "",
     dirty: false,
   };
@@ -74,6 +82,16 @@ export function featuredEditorReducer(
   state: EditorState,
   action: EditorAction,
 ): EditorState {
+  if (
+    state.saving &&
+    (action.type === "move" ||
+      action.type === "remove" ||
+      action.type === "add" ||
+      action.type === "set-query" ||
+      action.type === "search-start")
+  ) {
+    return state;
+  }
   switch (action.type) {
     case "move": {
       const currentIndex = state.selected.findIndex(({ id }) => id === action.id);
@@ -113,7 +131,12 @@ export function featuredEditorReducer(
     case "set-query":
       return { ...state, query: action.query };
     case "search-start":
-      return { ...state, searching: true, error: "" };
+      return {
+        ...state,
+        activeQuery: action.query,
+        searching: true,
+        error: "",
+      };
     case "search-success":
       return {
         ...state,
@@ -126,18 +149,37 @@ export function featuredEditorReducer(
     case "search-error":
       return { ...state, searching: false, error: action.error };
     case "save-start":
-      return { ...state, saving: true, error: "" };
-    case "save-success":
+      if (state.saving) return state;
+      return {
+        ...state,
+        saving: true,
+        pendingSaveIds: [...action.submittedIds],
+        error: "",
+      };
+    case "save-success": {
+      if (
+        !state.pendingSaveIds ||
+        !idsMatch(state.pendingSaveIds, action.submittedIds)
+      ) {
+        return state;
+      }
       return {
         ...state,
         selected: action.items,
         savedIds: action.items.map(({ id }) => id),
         saving: false,
+        pendingSaveIds: null,
         error: "",
         dirty: false,
       };
+    }
     case "save-error":
-      return { ...state, saving: false, error: action.error };
+      return {
+        ...state,
+        saving: false,
+        pendingSaveIds: null,
+        error: action.error,
+      };
   }
 }
 
@@ -225,10 +267,11 @@ export function FeaturedEditor({
     [state.dirty],
   );
 
-  async function search(page: number) {
-    dispatch({ type: "search-start" });
+  async function search(page: number, query: string = state.activeQuery) {
+    if (state.saving) return;
+    dispatch({ type: "search-start", query });
     try {
-      const response = await fetch(buildPropertySearchUrl(state.query, page), {
+      const response = await fetch(buildPropertySearchUrl(query, page), {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
       });
@@ -251,13 +294,15 @@ export function FeaturedEditor({
   }
 
   async function save() {
-    dispatch({ type: "save-start" });
+    if (state.saving) return;
+    const submittedIds = state.selected.map(({ id }) => id);
+    dispatch({ type: "save-start", submittedIds });
     try {
       const response = await fetch("/api/admin/featured", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ ids: state.selected.map(({ id }) => id) }),
+        body: JSON.stringify({ ids: submittedIds }),
       });
       if (!response.ok) {
         throw new Error(
@@ -270,7 +315,7 @@ export function FeaturedEditor({
       const payload = (await response.json()) as {
         items: AdminFeaturedPropertyCardData[];
       };
-      dispatch({ type: "save-success", items: payload.items });
+      dispatch({ type: "save-success", submittedIds, items: payload.items });
     } catch (error) {
       dispatch({
         type: "save-error",
@@ -335,7 +380,7 @@ export function FeaturedEditor({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={index === 0}
+                    disabled={state.saving || index === 0}
                     onClick={() => dispatch({ type: "move", id: item.id, direction: -1 })}
                     className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
                   >
@@ -343,7 +388,9 @@ export function FeaturedEditor({
                   </button>
                   <button
                     type="button"
-                    disabled={index === state.selected.length - 1}
+                    disabled={
+                      state.saving || index === state.selected.length - 1
+                    }
                     onClick={() => dispatch({ type: "move", id: item.id, direction: 1 })}
                     className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
                   >
@@ -351,6 +398,7 @@ export function FeaturedEditor({
                   </button>
                   <button
                     type="button"
+                    disabled={state.saving}
                     onClick={() => dispatch({ type: "remove", id: item.id })}
                     className="min-h-11 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-800"
                   >
@@ -379,7 +427,7 @@ export function FeaturedEditor({
           className="mt-4 flex flex-col gap-3 sm:flex-row"
           onSubmit={(event) => {
             event.preventDefault();
-            void search(1);
+            void search(1, state.query);
           }}
         >
           <label className="flex-1">
@@ -389,6 +437,7 @@ export function FeaturedEditor({
             <input
               type="search"
               maxLength={120}
+              disabled={state.saving}
               value={state.query}
               onChange={(event) =>
                 dispatch({ type: "set-query", query: event.currentTarget.value })
@@ -398,7 +447,7 @@ export function FeaturedEditor({
           </label>
           <button
             type="submit"
-            disabled={state.searching}
+            disabled={state.searching || state.saving}
             className="min-h-11 self-end rounded-lg bg-brand-dim px-5 py-3 font-semibold text-on-brand disabled:opacity-50"
           >
             {state.searching ? "Ищем…" : "Найти"}
@@ -416,7 +465,9 @@ export function FeaturedEditor({
                 <PropertySummary item={item} />
                 <button
                   type="button"
-                  disabled={state.selected.length >= 3 || alreadySelected}
+                  disabled={
+                    state.saving || state.selected.length >= 3 || alreadySelected
+                  }
                   onClick={() => dispatch({ type: "add", item })}
                   className="min-h-11 shrink-0 rounded-lg border border-brand px-4 py-2 font-semibold text-brand disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -434,8 +485,8 @@ export function FeaturedEditor({
           >
             <button
               type="button"
-              disabled={state.searching || state.page <= 1}
-              onClick={() => void search(state.page - 1)}
+              disabled={state.searching || state.saving || state.page <= 1}
+              onClick={() => void search(state.page - 1, state.activeQuery)}
               className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 disabled:opacity-40"
             >
               Назад
@@ -444,9 +495,11 @@ export function FeaturedEditor({
             <button
               type="button"
               disabled={
-                state.searching || state.page * state.pageSize >= state.total
+                state.searching ||
+                state.saving ||
+                state.page * state.pageSize >= state.total
               }
-              onClick={() => void search(state.page + 1)}
+              onClick={() => void search(state.page + 1, state.activeQuery)}
               className="min-h-11 rounded-lg border border-stone-300 px-4 py-2 disabled:opacity-40"
             >
               Дальше

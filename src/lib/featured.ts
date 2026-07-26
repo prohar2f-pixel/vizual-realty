@@ -12,6 +12,12 @@ export type PropertyCardData = {
   district: string | null;
   address: string | null;
   photo: string | null;
+  agent: {
+    id: string;
+    name: string;
+    phone: string | null;
+    photoUrl: string | null;
+  } | null;
 };
 
 export type AdminFeaturedPropertyCardData = PropertyCardData & {
@@ -52,8 +58,8 @@ type FeaturedPropertyRow = {
     city: string | null;
     district: string | null;
     address: string | null;
-    photos: string[];
     isFeed: boolean;
+    agent: PropertyCardData["agent"];
   };
 };
 
@@ -83,6 +89,14 @@ const cardSelection = {
   city: true,
   district: true,
   address: true,
+  agent: {
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      photoUrl: true,
+    },
+  },
 } as const;
 
 function asClient(client: unknown): FeaturedDataClient {
@@ -91,6 +105,7 @@ function asClient(client: unknown): FeaturedDataClient {
 
 function toCard(
   property: FeaturedPropertyRow["property"],
+  photo: string | null,
 ): PropertyCardData {
   return {
     id: property.id,
@@ -102,8 +117,24 @@ function toCard(
     city: property.city,
     district: property.district,
     address: property.address,
-    photo: property.photos[0] ?? null,
+    photo,
+    agent: property.agent,
   };
+}
+
+async function readCoverPhotos(
+  database: FeaturedDataClient,
+  ids: string[],
+) {
+  if (ids.length === 0) return new Map<string, string | null>();
+  const rows = await database.$queryRaw<Array<{ id: string; photo: string | null }>>(
+    Prisma.sql`
+      SELECT "id", "photos"[1] AS "photo"
+      FROM "Property"
+      WHERE "id" IN (${Prisma.join(ids)})
+    `,
+  );
+  return new Map(rows.map(({ id, photo }) => [id, photo]));
 }
 
 async function readFeatured(
@@ -118,15 +149,18 @@ async function readFeatured(
       property: {
         select: {
           ...cardSelection,
-          photos: true,
           isFeed: true,
         },
       },
     },
   })) as FeaturedPropertyRow[];
+  const photos = await readCoverPhotos(
+    database,
+    rows.map(({ property }) => property.id),
+  );
 
   return rows.map(({ property }) => ({
-    ...toCard(property),
+    ...toCard(property, photos.get(property.id) ?? null),
     isFeed: property.isFeed,
   }));
 }
@@ -146,6 +180,7 @@ export async function getFeaturedProperties(
     district: item.district,
     address: item.address,
     photo: item.photo,
+    agent: item.agent,
   }));
 }
 
@@ -253,18 +288,10 @@ export async function searchPublicProperties(
     database.property.count({ where }),
   ]);
 
-  let photos = new Map<string, string | null>();
-  if (rawItems.length > 0) {
-    const ids = rawItems.map(({ id }) => id);
-    const photoRows = await database.$queryRaw<Array<{ id: string; photo: string | null }>>(
-      Prisma.sql`
-        SELECT "id", "photos"[1] AS "photo"
-        FROM "Property"
-        WHERE "id" IN (${Prisma.join(ids)})
-      `,
-    );
-    photos = new Map(photoRows.map(({ id, photo }) => [id, photo]));
-  }
+  const photos = await readCoverPhotos(
+    database,
+    rawItems.map(({ id }) => id),
+  );
 
   return {
     items: rawItems.map((item) => ({

@@ -26,6 +26,7 @@ function card(
     district: "Калининский",
     address: "ул. Тестовая, 1",
     photo: null,
+    agent: null,
     isFeed: true,
     ...overrides,
   };
@@ -63,6 +64,47 @@ describe("featured editor state", () => {
     expect(buildPropertySearchUrl("улица & дом", 2)).toBe(
       "/api/admin/properties?q=%D1%83%D0%BB%D0%B8%D1%86%D0%B0+%26+%D0%B4%D0%BE%D0%BC&page=2",
     );
+  });
+
+  test("keeps pagination on the last submitted query while draft input changes", () => {
+    let state = createEditorState([card("a")]);
+    state = featuredEditorReducer(state, { type: "set-query", query: "дом A" });
+    state = featuredEditorReducer(state, {
+      type: "search-start",
+      query: state.query,
+    });
+    state = featuredEditorReducer(state, {
+      type: "search-success",
+      result: { items: [], total: 40, page: 1, pageSize: 20 },
+    });
+    state = featuredEditorReducer(state, { type: "set-query", query: "дом B" });
+
+    expect(state.activeQuery).toBe("дом A");
+    expect(buildPropertySearchUrl(state.activeQuery, 2)).toBe(
+      "/api/admin/properties?q=%D0%B4%D0%BE%D0%BC+A&page=2",
+    );
+  });
+
+  test("locks selection actions to the IDs submitted while saving", () => {
+    let state = createEditorState([card("a"), card("b")]);
+    state = featuredEditorReducer(state, { type: "remove", id: "a" });
+    const submittedIds = state.selected.map(({ id }) => id);
+    state = featuredEditorReducer(state, { type: "save-start", submittedIds });
+    const savingState = state;
+
+    state = featuredEditorReducer(state, { type: "add", item: card("c") });
+    state = featuredEditorReducer(state, { type: "remove", id: "b" });
+    state = featuredEditorReducer(state, { type: "move", id: "b", direction: 1 });
+    expect(state).toBe(savingState);
+    expect(state.pendingSaveIds).toEqual(["b"]);
+
+    state = featuredEditorReducer(state, {
+      type: "save-success",
+      submittedIds,
+      items: [card("b")],
+    });
+    expect(state.selected.map(({ id }) => id)).toEqual(["b"]);
+    expect(state.saving).toBe(false);
   });
 });
 

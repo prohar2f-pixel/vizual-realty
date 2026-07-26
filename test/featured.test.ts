@@ -21,6 +21,12 @@ type PropertyFixture = {
   address: string | null;
   photos: string[];
   isFeed: boolean;
+  agent: {
+    id: string;
+    name: string;
+    phone: string | null;
+    photoUrl: string | null;
+  } | null;
 };
 
 function property(
@@ -39,6 +45,12 @@ function property(
     address: `ул. Тестовая, ${id}`,
     photos: [`https://img.test/${id}/one.jpg`, `https://img.test/${id}/two.jpg`],
     isFeed: true,
+    agent: {
+      id: `agent-${id}`,
+      name: `Агент ${id}`,
+      phone: "+7 949 000-00-00",
+      photoUrl: null,
+    },
     ...overrides,
   };
 }
@@ -47,7 +59,9 @@ class InMemoryFeaturedClient {
   readonly properties: PropertyFixture[];
   featured: Array<{ propertyId: string; position: number }>;
   transactionCalls = 0;
-  private latestSearchIds: string[] = [];
+  photoQueryCalls = 0;
+  lastFeaturedFindManyArgs: Record<string, unknown> | null = null;
+  private latestPhotoIds: string[] = [];
 
   constructor(
     properties: PropertyFixture[],
@@ -76,7 +90,8 @@ class InMemoryFeaturedClient {
   };
 
   async $queryRaw<T>(): Promise<T> {
-    return this.latestSearchIds
+    this.photoQueryCalls += 1;
+    return this.latestPhotoIds
       .map((id) => {
         const row = this.properties.find((item) => item.id === id);
         return row ? { id, photo: row.photos[0] ?? null } : null;
@@ -127,7 +142,7 @@ class InMemoryFeaturedClient {
       const skip = Number(args.skip ?? 0);
       const take = Number(args.take ?? rows.length);
       rows = rows.slice(skip, skip + take);
-      this.latestSearchIds = rows.map((item) => item.id);
+      this.latestPhotoIds = rows.map((item) => item.id);
       return rows.map((item) => ({
         id: item.id,
         shortId: item.shortId,
@@ -139,6 +154,7 @@ class InMemoryFeaturedClient {
         district: item.district,
         address: item.address,
         isFeed: item.isFeed,
+        agent: item.agent,
       }));
     };
     this.property.count = async (args) => {
@@ -146,11 +162,12 @@ class InMemoryFeaturedClient {
       return rows.length;
     };
     this.featuredProperty.findMany = async (args) => {
+      this.lastFeaturedFindManyArgs = args;
       const propertyMustBePublic = Boolean(
         ((args.where as { property?: { isFeed?: boolean } } | undefined)?.property)
           ?.isFeed,
       );
-      return [...this.featured]
+      const rows = [...this.featured]
         .sort((left, right) => left.position - right.position)
         .map((selection) => ({
           ...selection,
@@ -161,6 +178,8 @@ class InMemoryFeaturedClient {
           ),
         }))
         .filter((selection) => selection.property);
+      this.latestPhotoIds = rows.map((selection) => selection.propertyId);
+      return rows;
     };
     this.featuredProperty.deleteMany = async () => {
       const count = this.featured.length;
@@ -252,6 +271,17 @@ describe("featured property reads", () => {
     expect(items.map((item) => item.id)).toEqual(["b", "a"]);
     expect(items[0].photo).toBe("https://img.test/b/one.jpg");
     expect(items[0]).not.toHaveProperty("photos");
+    expect(items[0].agent).toEqual({
+      id: "agent-b",
+      name: "Агент b",
+      phone: "+7 949 000-00-00",
+      photoUrl: null,
+    });
+    const featuredSelect = database.lastFeaturedFindManyArgs?.select as {
+      property?: { select?: { photos?: unknown } };
+    };
+    expect(featuredSelect.property?.select?.photos).toBeUndefined();
+    expect(database.photoQueryCalls).toBe(1);
   });
 
   test("skips a saved property hidden after selection but exposes it to admin", async () => {
@@ -413,6 +443,7 @@ describe("featured admin API", () => {
       district: source.district,
       address: source.address,
       photo: null,
+      agent: source.agent,
       isFeed: true,
     }];
     const replace = vi.fn(async () => undefined);
@@ -462,6 +493,58 @@ describe("featured admin API", () => {
       error: "Каждый объект можно выбрать только один раз",
     });
     expect(body).not.toContain(secretId);
+  });
+
+  test("rejects an oversized streamed JSON body without Content-Length", async () => {
+    const replace = vi.fn();
+    const { POST } = createFeaturedHandlers({
+      readSession: async () => TEST_SESSION,
+      readSiteOrigin: () => TEST_ORIGIN,
+      getItems: async () => [],
+      replace,
+    });
+    const request = new Request(`${TEST_ORIGIN}/api/admin/featured`, {
+      method: "POST",
+      headers: { origin: TEST_ORIGIN, "content-type": "application/json" },
+      body: JSON.stringify({ ids: ["x".repeat(9_000)] }),
+    });
+    expect(request.headers.get("content-length")).toBeNull();
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: "Некорректный запрос",
+    });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  test("does not trust an underreported Content-Length and handles a null body", async () => {
+    const replace = vi.fn();
+    const { POST } = createFeaturedHandlers({
+      readSession: async () => TEST_SESSION,
+      readSiteOrigin: () => TEST_ORIGIN,
+      getItems: async () => [],
+      replace,
+    });
+    const underreported = new Request(`${TEST_ORIGIN}/api/admin/featured`, {
+      method: "POST",
+      headers: {
+        origin: TEST_ORIGIN,
+        "content-type": "application/json",
+        "content-length": "1",
+      },
+      body: JSON.stringify({ ids: ["x".repeat(9_000)] }),
+    });
+    const noBody = new Request(`${TEST_ORIGIN}/api/admin/featured`, {
+      method: "POST",
+      headers: { origin: TEST_ORIGIN },
+    });
+
+    expect((await POST(underreported)).status).toBe(400);
+    expect((await POST(noBody)).status).toBe(400);
+    expect(replace).not.toHaveBeenCalled();
   });
 });
 

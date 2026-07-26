@@ -6,6 +6,10 @@ import {
 } from "../../../../lib/admin/request";
 import type { AdminSession } from "../../../../lib/admin/session";
 import {
+  readLimitedJsonBody,
+  RouteBodyError,
+} from "../../../../lib/admin/route-body";
+import {
   FeaturedValidationError,
   getAdminFeaturedProperties,
   replaceFeaturedPropertyIds,
@@ -48,12 +52,6 @@ function validationMessage(error: FeaturedValidationError) {
   }
 }
 
-function bodyMayBeRead(request: Request) {
-  const contentLength = request.headers.get("content-length");
-  if (!contentLength) return true;
-  return /^\d+$/.test(contentLength) && Number(contentLength) <= MAX_BODY_BYTES;
-}
-
 export function createFeaturedHandlers(
   overrides: Partial<FeaturedDependencies> = {},
 ) {
@@ -76,10 +74,9 @@ export function createFeaturedHandlers(
         return json({ ok: false, error: "Требуется вход" }, 401);
       }
       assertTrustedOrigin(request, dependencies.readSiteOrigin());
-      if (!bodyMayBeRead(request)) {
-        return json({ ok: false, error: "Некорректный запрос" }, 400);
-      }
-      const body = (await request.json()) as { ids?: unknown } | null;
+      const body = (await readLimitedJsonBody(request, MAX_BODY_BYTES)) as {
+        ids?: unknown;
+      } | null;
       if (!body || typeof body !== "object" || !("ids" in body)) {
         return json({ ok: false, error: "Некорректный запрос" }, 400);
       }
@@ -95,7 +92,7 @@ export function createFeaturedHandlers(
       if (error instanceof FeaturedValidationError) {
         return json({ ok: false, error: validationMessage(error) }, 400);
       }
-      if (error instanceof SyntaxError) {
+      if (error instanceof RouteBodyError) {
         return json({ ok: false, error: "Некорректный запрос" }, 400);
       }
       return json(
