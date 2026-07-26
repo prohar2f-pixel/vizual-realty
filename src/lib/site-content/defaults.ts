@@ -139,7 +139,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
       },
       {
         id: "tsarenko-viktoria",
-        name: "Царенко Виктория",
+        name: "Тсаренко Виктория",
         phone: "+7 (963) 532-80-09",
         email: "tsarenko.viktoria2000@mail.ru",
         imageId: "tsarenko-viktoria",

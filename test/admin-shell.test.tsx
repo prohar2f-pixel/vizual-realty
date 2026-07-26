@@ -29,7 +29,7 @@ test("renders only the approved Russian admin navigation and a POST logout form"
   ).toBe(true);
   expect(html).toContain('href="/admin/featured"');
   expect(html).toContain('href="/admin/content"');
-  expect(html).toContain('href="/"');
+  expect(html).toContain('href="/admin/preview?page=home"');
   expect(html).toContain('<form action="/api/admin/logout" method="post">');
   expect(html).not.toContain("Настройки");
   expect(html).not.toContain("Пользователи");

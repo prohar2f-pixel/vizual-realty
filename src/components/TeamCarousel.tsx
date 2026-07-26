@@ -4,12 +4,13 @@ import { useState } from "react";
 
 export type TeamManager = {
   name: string;
-  phone: string;
-  phoneHref: string;
-  contactUrl: string;
-  contactLabel: string;
+  phone?: string;
+  phoneHref?: string;
+  contactUrl?: string;
+  contactLabel?: string;
   contactExternal: boolean;
-  photoUrl: string;
+  photoUrl?: string;
+  description?: string;
 };
 
 export function ManagerCard({ manager }: { manager: TeamManager }) {
@@ -19,34 +20,31 @@ export function ManagerCard({ manager }: { manager: TeamManager }) {
 
   return (
     <article className="overflow-hidden rounded-2xl border-2 border-brand bg-white shadow-sm">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={manager.photoUrl}
-        alt={manager.name}
-        className="h-80 w-full object-cover object-top"
-      />
+      {manager.photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={manager.photoUrl} alt={manager.name} className="h-80 w-full object-cover object-top" />
+      ) : (
+        <div className="flex h-80 items-center justify-center bg-brand/5 text-brand" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" className="h-20 w-20" stroke="currentColor" strokeWidth="1.2">
+            <circle cx="12" cy="8" r="3.25" />
+            <path d="M5.75 19c.55-3.35 2.75-5.25 6.25-5.25s5.7 1.9 6.25 5.25" />
+          </svg>
+        </div>
+      )}
 
       <div className="p-5">
         <h2 className="font-display text-2xl font-bold text-brand">{manager.name}</h2>
-        <a
-          href={manager.phoneHref}
-          className="mt-2 block font-semibold text-text transition hover:text-brand"
-        >
-          {manager.phone}
-        </a>
+        {manager.phone && manager.phoneHref ? (
+          <a href={manager.phoneHref} className="mt-2 block font-semibold text-text transition hover:text-brand">{manager.phone}</a>
+        ) : null}
 
         <div className="mt-5 rounded-xl bg-brand/5 p-4 text-sm leading-6 text-text/75">
-          Подробная информация об опыте и достижениях менеджера будет добавлена
-          после согласования.
+          {manager.description ?? "Подробная информация об опыте и достижениях менеджера будет добавлена после согласования."}
         </div>
 
-        <a
-          href={manager.contactUrl}
-          {...externalProps}
-          className="mt-5 inline-flex w-full justify-center rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-on-brand transition hover:bg-brand-dim"
-        >
-          {manager.contactLabel}
-        </a>
+        {manager.contactUrl && manager.contactLabel ? (
+          <a href={manager.contactUrl} {...externalProps} className="mt-5 inline-flex w-full justify-center rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-on-brand transition hover:bg-brand-dim">{manager.contactLabel}</a>
+        ) : null}
       </div>
     </article>
   );

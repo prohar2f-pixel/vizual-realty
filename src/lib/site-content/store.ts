@@ -48,6 +48,12 @@ export class SiteContentConflictError extends Error {
   }
 }
 
+export type SiteContentStatus = {
+  draftUpdatedAt: Date;
+  publishedAt: Date | null;
+  canRollback: boolean;
+};
+
 function asClient(client: unknown): SiteContentClient {
   return client as SiteContentClient;
 }
@@ -74,6 +80,14 @@ function parseStoredContent(value: unknown): SiteContentV1 {
   } catch {
     throw new SiteContentStorageError("INVALID_STORED_CONTENT");
   }
+}
+
+function parseStoredDate(value: unknown, nullable: boolean): Date | null {
+  if (nullable && value === null) return null;
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    throw new SiteContentStorageError("INVALID_STORED_CONTENT");
+  }
+  return value;
 }
 
 function toInputJson(value: unknown): Prisma.InputJsonValue {
@@ -142,6 +156,29 @@ export function createSiteContentStore(
   async function getDraftContent(): Promise<SiteContentV1> {
     const row = await findContentRow(database, { draft: true });
     return parseStoredContent(row.draft);
+  }
+
+  async function getSiteContentStatus(): Promise<SiteContentStatus> {
+    const row = await database.siteContent.findUnique({
+      where: { id: SITE_CONTENT_ID },
+      select: {
+        draftUpdatedAt: true,
+        publishedAt: true,
+        previousPublished: true,
+      },
+    });
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      throw new SiteContentStorageError("MISSING_CONTENT");
+    }
+    const record = row as Record<string, unknown>;
+    if (!Object.hasOwn(record, "previousPublished")) {
+      throw new SiteContentStorageError("INVALID_STORED_CONTENT");
+    }
+    return {
+      draftUpdatedAt: parseStoredDate(record.draftUpdatedAt, false) as Date,
+      publishedAt: parseStoredDate(record.publishedAt, true),
+      canRollback: record.previousPublished !== null,
+    };
   }
 
   async function saveDraft(input: unknown): Promise<SiteContentV1> {
@@ -221,6 +258,7 @@ export function createSiteContentStore(
   return {
     getPublishedContent,
     getDraftContent,
+    getSiteContentStatus,
     saveDraft,
     publishDraft,
     rollbackPublished,
@@ -231,6 +269,7 @@ const store = createSiteContentStore(db);
 
 export const getPublishedContent = store.getPublishedContent;
 export const getDraftContent = store.getDraftContent;
+export const getSiteContentStatus = store.getSiteContentStatus;
 export const saveDraft = store.saveDraft;
 export const publishDraft = store.publishDraft;
 export const rollbackPublished = store.rollbackPublished;

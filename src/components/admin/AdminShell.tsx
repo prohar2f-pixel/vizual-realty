@@ -26,7 +26,7 @@ export function AdminShell({ children }: AdminShellProps) {
           </Link>
           <Link
             className="min-h-11 rounded-lg px-4 py-3 text-sm font-semibold text-brand-dim transition-colors hover:bg-brand/10"
-            href="/"
+            href="/admin/preview?page=home"
           >
             Предпросмотр
           </Link>

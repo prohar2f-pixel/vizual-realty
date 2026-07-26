@@ -6,7 +6,7 @@ vi.mock("@/lib/db", () => ({
   db: { property: { findMany: vi.fn().mockResolvedValue([]) } },
 }));
 
-vi.mock("@/components/PropertyCard", () => ({
+vi.mock("../src/components/PropertyCard", () => ({
   PropertyCard: () => null,
 }));
 

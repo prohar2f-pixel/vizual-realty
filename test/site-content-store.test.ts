@@ -402,6 +402,17 @@ describe("site content admin reads and draft writes", () => {
 });
 
 describe("site content publication history", () => {
+  test("reads only publication metadata needed by the preview controls", async () => {
+    const client = createPrismaLikeClient(storedRow());
+    const store = createSiteContentStore(client);
+
+    await expect(store.getSiteContentStatus()).resolves.toEqual({
+      draftUpdatedAt: new Date("2026-07-26T06:00:00.000Z"),
+      publishedAt: new Date("2026-07-26T06:30:00.000Z"),
+      canRollback: true,
+    });
+  });
+
   test("publishes the draft and captures the prior publication atomically", async () => {
     const before = storedRow();
     const client = createPrismaLikeClient(before);
@@ -770,15 +781,22 @@ describe("site content admin API", () => {
 describe("publish and rollback admin API", () => {
   test("publishes only after session and exact Origin checks", async () => {
     const publish = vi.fn(async () => snapshot("Опубликованный черновик"));
+    const getStatus = vi.fn(async () => ({
+      draftUpdatedAt: new Date("2026-07-26T06:00:00.000Z"),
+      publishedAt: new Date("2026-07-26T07:00:00.000Z"),
+      canRollback: true,
+    }));
     const unauthorized = createPublishHandler({
       readSession: async () => null,
       readSiteOrigin: () => TEST_ORIGIN,
       publish,
+      getStatus,
     });
     const authorized = createPublishHandler({
       readSession: async () => TEST_SESSION,
       readSiteOrigin: () => TEST_ORIGIN,
       publish,
+      getStatus,
     });
 
     expect(
@@ -798,9 +816,14 @@ describe("publish and rollback admin API", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
-      content: snapshot("Опубликованный черновик"),
+      status: {
+        draftUpdatedAt: "2026-07-26T06:00:00.000Z",
+        publishedAt: "2026-07-26T07:00:00.000Z",
+        canRollback: true,
+      },
     });
     expect(publish).toHaveBeenCalledTimes(1);
+    expect(getStatus).toHaveBeenCalledTimes(1);
   });
 
   test("returns a generic conflict when no rollback publication exists", async () => {

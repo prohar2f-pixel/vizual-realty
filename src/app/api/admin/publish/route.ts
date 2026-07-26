@@ -5,19 +5,25 @@ import {
   getAdminSession,
 } from "../../../../lib/admin/request";
 import type { AdminSession } from "../../../../lib/admin/session";
-import { publishDraft } from "../../../../lib/site-content/store";
+import {
+  getSiteContentStatus,
+  publishDraft,
+  type SiteContentStatus,
+} from "../../../../lib/site-content/store";
 import type { SiteContentV1 } from "../../../../lib/site-content/schema";
 
 type PublishDependencies = {
   readSession: () => Promise<AdminSession | null>;
   readSiteOrigin: () => string;
   publish: () => Promise<SiteContentV1>;
+  getStatus: () => Promise<SiteContentStatus>;
 };
 
 const defaultDependencies: PublishDependencies = {
   readSession: getAdminSession,
   readSiteOrigin: () => readAdminAuthConfig().siteOrigin,
   publish: publishDraft,
+  getStatus: getSiteContentStatus,
 };
 
 function json(body: unknown, status: number) {
@@ -38,10 +44,8 @@ export function createPublishHandler(
         return json({ ok: false, error: "Требуется вход" }, 401);
       }
       assertTrustedOrigin(request, dependencies.readSiteOrigin());
-      return json(
-        { ok: true, content: await dependencies.publish() },
-        200,
-      );
+      await dependencies.publish();
+      return json({ ok: true, status: await dependencies.getStatus() }, 200);
     } catch (error) {
       if (error instanceof AdminRequestError) {
         return json(
