@@ -1,0 +1,228 @@
+export type TeamMemberV1 = {
+  id: string;
+  name: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+  telegram?: string;
+  imageId?: string;
+  topnlabAgentId?: string;
+  isVisible: boolean;
+};
+
+export type SiteContentV1 = {
+  schemaVersion: 1;
+  navigation: {
+    home: string;
+    catalog: string;
+    about: string;
+    team: string;
+    contacts: string;
+  };
+  footer: {
+    catalogLabel: string;
+    contactsTitle: string;
+    address: string;
+    phone: string;
+    email: string;
+    copyright: string;
+  };
+  home: {
+    heroHeading: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    catalogCta: string;
+    contactsCta: string;
+    featuredTitle: string;
+    featuredCatalogLabel: string;
+    featuredEmptyText: string;
+    whyTitle: string;
+    whyIntroduction: string;
+    benefits: Array<{ title: string; description?: string }>;
+    aboutCta: string;
+    statisticLabel: string;
+    statisticValue: string;
+    statisticDescription: string;
+  };
+  about: {
+    title: string;
+    introduction: string[];
+    servicesTitle: string;
+    services: string[];
+    closingText: string;
+    teamCta: string;
+    teamCtaText: string;
+  };
+  team: {
+    title: string;
+    introduction: string;
+    members: TeamMemberV1[];
+  };
+  contacts: {
+    title: string;
+    managersTitle: string;
+    phoneLabel: string;
+    emailLabel: string;
+    addressLabel: string;
+    address: string;
+    phone: string;
+    email: string;
+    routeCta: string;
+  };
+};
+
+export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
+  schemaVersion: 1,
+  navigation: {
+    home: "Главная",
+    catalog: "Каталог",
+    about: "О нас",
+    team: "Команда",
+    contacts: "Контакты",
+  },
+  footer: {
+    catalogLabel: "Каталог",
+    contactsTitle: "Контакты",
+    address: "г. Донецк, ул. 50 лет СССР, 142",
+    phone: "+7 (989) 802-84-32",
+    email: "milmildom@mail.ru",
+    copyright: "Агентство недвижимости «Визуал»",
+  },
+  home: {
+    heroHeading: "Недвижимость в Донецке",
+    heroTitle: "Продажа квартир, домов, и земельных участков.",
+    heroSubtitle:
+      "Большой каталог проверенных объектов и личный агент сопровождающий всю сделку.",
+    catalogCta: "Смотреть каталог",
+    contactsCta: "Связаться с нами",
+    featuredTitle: "Избранные объекты",
+    featuredCatalogLabel: "весь каталог",
+    featuredEmptyText: "Объекты скоро появятся.",
+    whyTitle: "Почему «Визуал»",
+    whyIntroduction:
+      "Мы поможем купить или продать недвижимость с заботой и вниманием к деталям. Каждый объект проверен юристами, а сопроводит вашу сделку опытный агент.",
+    benefits: [
+      { title: "Большой каталог", description: "более 200 проверенных объектов" },
+      {
+        title: "Опытный агент",
+        description: "на каждом этапе сделки, полное сопровождение",
+      },
+      { title: "Открытие ипотеки бесплатно" },
+      {
+        title: "Сопровождение сделки под ключ",
+        description: "от звонка до получения ключей",
+      },
+    ],
+    aboutCta: "Подробнее о компании",
+    statisticLabel: "агентство недвижимости",
+    statisticValue: "200+",
+    statisticDescription: "активных объектов в продаже",
+  },
+  about: {
+    title: "О нас",
+    introduction: [
+      "Мы — федеральное агентство недвижимости «Визуал», являемся первыми в рейтинге Домклик на Юге России.",
+      "Наши представительства есть в Донецке, Мариуполе, Краснодаре и Ростове-на-Дону.",
+    ],
+    servicesTitle: "Чем мы можем быть полезны для вас",
+    services: [
+      "Покупка и продажа объектов на вторичном рынке Донецка, Мариуполя, Краснодара и Ростова-на-Дону",
+      "Строительство домов в ипотеку под 2% в Донецке, Мариуполе",
+      "Покупка квартир в ипотеку 2% в Мариуполе, Донецке",
+      "Покупка квартир в Семейную ипотеку в Краснодаре, Ростове-на-Дону, в Крыму и других городах юга России",
+      "Открытие ипотеки для наших клиентов бесплатно",
+      "Межевание земельных участков в Донецке и Мариуполе",
+      "Снос ветхих зданий в Донецке и Мариуполе",
+    ],
+    closingText:
+      "В нашем каталоге более 200 объектов, за каждым закреплён личный агент, звоните.",
+    teamCta: "КОМАНДА",
+    teamCtaText:
+      "В разделе КОМАНДА вы можете выбрать для работы любого менеджера нашей компании и позвонить ему напрямую 🤝",
+  },
+  team: {
+    title: "Команда",
+    introduction: "Познакомьтесь с менеджерами агентства недвижимости «Визуал».",
+    members: [
+      {
+        id: "ayanot-elena",
+        name: "Аянот Елена",
+        phone: "+7 (949) 537-55-65",
+        telegram: "Lena_Katana",
+        imageId: "ayanot-elena",
+        topnlabAgentId: "296892",
+        isVisible: true,
+      },
+      {
+        id: "banityuk-yulia",
+        name: "Банитюк Юлия",
+        phone: "+7 (949) 578-09-33",
+        telegram: "Lia_banituk",
+        imageId: "banityuk-yulia",
+        topnlabAgentId: "296881",
+        isVisible: true,
+      },
+      {
+        id: "khadzhinova-alina",
+        name: "Хаджинова Алина",
+        phone: "+7 (949) 400-92-74",
+        telegram: "alin_ka160",
+        imageId: "khadzhinova-alina",
+        topnlabAgentId: "298110",
+        isVisible: true,
+      },
+      {
+        id: "borokha-yuli",
+        name: "Бороха Юли",
+        phone: "+7 (918) 295-60-93",
+        telegram: "juliaborokha24",
+        imageId: "borokha-yuli",
+        isVisible: true,
+      },
+      {
+        id: "melnik-sergey",
+        name: "Мельник Сергей",
+        phone: "+7 (949) 647-72-56",
+        telegram: "sergeymcv",
+        imageId: "melnik-sergey",
+        topnlabAgentId: "297093",
+        isVisible: true,
+      },
+      {
+        id: "medvedeva-elena",
+        name: "Медведева Елена",
+        phone: "+7 (949) 715-80-77",
+        telegram: "Elen_md",
+        imageId: "medvedeva-elena",
+        isVisible: true,
+      },
+      {
+        id: "olga-krivutsa",
+        name: "Ольга Кривуца",
+        phone: "+7 (978) 059-26-69",
+        email: "olya_malina22@mail.ru",
+        imageId: "olga-krivutsa",
+        isVisible: true,
+      },
+      {
+        id: "tsarenko-viktoria",
+        name: "Царенко Виктория",
+        phone: "+7 (963) 532-80-09",
+        email: "tsarenko.viktoria2000@mail.ru",
+        imageId: "tsarenko-viktoria",
+        isVisible: true,
+      },
+    ],
+  },
+  contacts: {
+    title: "Контакты",
+    managersTitle: "Контакты менеджеров",
+    phoneLabel: "Телефон",
+    emailLabel: "E-mail",
+    addressLabel: "Адрес офиса",
+    address: "г. Донецк, ул. 50 лет СССР, 142",
+    phone: "+7 (989) 802-84-32",
+    email: "milmildom@mail.ru",
+    routeCta: "Проложить маршрут",
+  },
+};

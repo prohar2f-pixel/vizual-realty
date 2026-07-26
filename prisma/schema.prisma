@@ -37,5 +37,23 @@ model Property {
   isFeed      Boolean  @default(true)
   agent       Agent?   @relation(fields: [agentId], references: [id])
   agentId     String?
+  featured    FeaturedProperty?
   updatedAt   DateTime @updatedAt
+}
+
+model FeaturedProperty {
+  propertyId String   @id
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  position   Int      @unique
+  updatedAt  DateTime @updatedAt
+}
+
+model SiteContent {
+  id                String   @id
+  draft             Json
+  published         Json
+  previousPublished Json?
+  draftUpdatedAt    DateTime
+  publishedAt       DateTime?
+  updatedAt         DateTime @updatedAt
 }
