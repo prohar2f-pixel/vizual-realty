@@ -196,6 +196,33 @@ test("disables unavailable rollback and locks both actions while a request is pe
   expect(container.textContent).toContain("Предыдущая версия опубликована");
 });
 
+test("confirms rollback exactly and applies its atomic reverse-rollback status", async () => {
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        ok: true,
+        status: {
+          draftUpdatedAt: "2026-07-26T08:00:00.000Z",
+          publishedAt: "2026-07-26T08:15:00.000Z",
+          canRollback: true,
+        },
+      }),
+    ),
+  );
+  const container = await mountBar(true);
+
+  await act(async () => button(container, "Откатить").click());
+
+  expect(confirm).toHaveBeenCalledWith(
+    "Вернуть предыдущую опубликованную версию? Текущая версия останется доступна для обратного отката.",
+  );
+  expect(container.textContent).toContain("11:15");
+  expect(button(container, "Откатить").disabled).toBe(false);
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
 test("keeps controls usable and shows only a safe Russian error after failure", async () => {
   vi.spyOn(window, "confirm").mockReturnValue(true);
   vi.stubGlobal(

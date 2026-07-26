@@ -8,6 +8,7 @@ export function TeamPageView({ content }: { content: SiteContentV1["team"] }) {
     .map((member) => {
       const contact = memberContact(member);
       return {
+        id: member.id,
         name: member.name,
         phone: member.phone,
         phoneHref: phoneHref(member.phone),

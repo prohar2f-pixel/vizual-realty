@@ -9,6 +9,7 @@ import { managers } from "../src/app/(public)/team/managers";
 
 test("renders an e-mail action without opening a browser tab", () => {
   const manager: TeamManager = {
+    id: "olga-krivutsa",
     name: "Ольга Кривуца",
     phone: "+7 (978) 059-26-69",
     phoneHref: "tel:+79780592669",
@@ -27,6 +28,7 @@ test("renders an e-mail action without opening a browser tab", () => {
 
 test("keeps Telegram actions external", () => {
   const manager: TeamManager = {
+    id: "ayanot-elena",
     name: "Аянот Елена",
     phone: "+7 (949) 537-55-65",
     phoneHref: "tel:+79495375565",

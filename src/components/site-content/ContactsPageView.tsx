@@ -23,12 +23,13 @@ function ManagerAvatar({ member }: { member: TeamMemberV1 }) {
   );
 }
 
-export function ContactsPageView({ content, members }: {
+export function ContactsPageView({ content, members, mapSearchAddress }: {
   content: SiteContentV1["contacts"];
   members: TeamMemberV1[];
+  mapSearchAddress?: string;
 }) {
   const visibleMembers = members.filter((member) => member.isVisible);
-  const encodedAddress = encodeURIComponent(content.address);
+  const encodedAddress = encodeURIComponent(mapSearchAddress ?? content.address);
   const mapUrl = `https://yandex.ru/map-widget/v1/?mode=search&text=${encodedAddress}&z=16`;
   const routeUrl = `https://yandex.ru/maps/?mode=search&text=${encodedAddress}`;
 
@@ -42,6 +43,9 @@ export function ContactsPageView({ content, members }: {
             {visibleMembers.length > 0 ? visibleMembers.map((member) => {
               const contact = memberContact(member);
               const memberPhoneHref = phoneHref(member.phone);
+              const contactLabel = contact?.label === "Написать в Telegram"
+                ? "Написать менеджеру"
+                : contact?.label;
               return (
                 <div key={member.id} className="flex min-h-10 items-center gap-3 rounded-xl bg-stone-50 px-3">
                   <ManagerAvatar member={member} />
@@ -56,9 +60,9 @@ export function ContactsPageView({ content, members }: {
                       href={contact.url}
                       {...(contact.external ? { target: "_blank" as const, rel: "noreferrer" } : {})}
                       className="ml-auto shrink-0 rounded-lg border border-brand px-2.5 py-1.5 text-[11px] font-semibold leading-none text-brand transition hover:bg-brand hover:text-on-brand"
-                      aria-label={`${contact.label}: ${member.name}`}
+                      aria-label={`${contactLabel}: ${member.name}`}
                     >
-                      {contact.label === "Написать в Telegram" ? "Написать менеджеру" : contact.label}
+                      {contactLabel}
                     </a>
                   ) : null}
                 </div>

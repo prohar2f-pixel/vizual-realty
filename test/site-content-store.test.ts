@@ -84,6 +84,7 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
   let row = initial === null ? null : clone(initial);
   let failFind = false;
   let failTransactionUpdate = false;
+  let corruptTransactionUpdateMetadata = false;
   const operations: string[] = [];
   let transactionCount = 0;
   let rowLockTail = Promise.resolve();
@@ -140,7 +141,10 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
             ...clone(args.data),
           };
           write(next);
-          return project(next);
+          const result = project(next);
+          return prefix === "tx." && corruptTransactionUpdateMetadata
+            ? { ...result, publishedAt: "invalid-date" }
+            : result;
         },
       },
     };
@@ -208,6 +212,9 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
     },
     setTransactionUpdateFailure(value: boolean) {
       failTransactionUpdate = value;
+    },
+    setCorruptTransactionUpdateMetadata(value: boolean) {
+      corruptTransactionUpdateMetadata = value;
     },
   };
 }
@@ -435,6 +442,66 @@ describe("site content publication history", () => {
       "tx.findUnique",
       "tx.update",
     ]);
+  });
+
+  test("returns publish content and metadata from the same locked transaction", async () => {
+    const before = storedRow();
+    const client = createPrismaLikeClient(before);
+    const store = createSiteContentStore(client);
+
+    const result = await store.publishDraftWithStatus();
+    const after = client.inspect();
+
+    expect(result.content.home.heroTitle).toBe("Черновик");
+    expect(result.status).toEqual({
+      draftUpdatedAt: before.draftUpdatedAt,
+      publishedAt: after?.publishedAt,
+      canRollback: true,
+    });
+    expect(client.operations).toEqual([
+      "$transaction",
+      "tx.advisoryLock",
+      "tx.rowLock",
+      "tx.findUnique",
+      "tx.update",
+    ]);
+  });
+
+  test("returns rollback content and metadata from the same locked transaction", async () => {
+    const before = storedRow();
+    const client = createPrismaLikeClient(before);
+    const store = createSiteContentStore(client);
+
+    const result = await store.rollbackPublishedWithStatus();
+    const after = client.inspect();
+
+    expect(result.content.home.heroTitle).toBe("Предыдущая версия");
+    expect(result.status).toEqual({
+      draftUpdatedAt: before.draftUpdatedAt,
+      publishedAt: after?.publishedAt,
+      canRollback: true,
+    });
+    expect(client.operations).toEqual([
+      "$transaction",
+      "tx.advisoryLock",
+      "tx.rowLock",
+      "tx.findUnique",
+      "tx.update",
+    ]);
+  });
+
+  test("rolls back publication when mutation metadata is invalid before commit", async () => {
+    const before = storedRow();
+    const client = createPrismaLikeClient(before);
+    client.setCorruptTransactionUpdateMetadata(true);
+    const store = createSiteContentStore(client);
+
+    await expect(store.publishDraftWithStatus()).rejects.toBeInstanceOf(
+      SiteContentStorageError,
+    );
+
+    expect(client.inspect()).toEqual(before);
+    expect(client.transactionCount).toBe(1);
   });
 
   test("does not expose a partial publish when the transactional update fails", async () => {
@@ -780,24 +847,31 @@ describe("site content admin API", () => {
 
 describe("publish and rollback admin API", () => {
   test("publishes only after session and exact Origin checks", async () => {
-    const publish = vi.fn(async () => snapshot("Опубликованный черновик"));
-    const getStatus = vi.fn(async () => ({
-      draftUpdatedAt: new Date("2026-07-26T06:00:00.000Z"),
-      publishedAt: new Date("2026-07-26T07:00:00.000Z"),
-      canRollback: true,
+    const publish = vi.fn(async () => ({
+      content: snapshot("Опубликованный черновик"),
+      status: {
+        draftUpdatedAt: new Date("2026-07-26T06:00:00.000Z"),
+        publishedAt: new Date("2026-07-26T07:00:00.000Z"),
+        canRollback: true,
+      },
     }));
-    const unauthorized = createPublishHandler({
+    const getStatus = vi.fn(async () => {
+      throw new Error("post-commit-read-failed");
+    });
+    const unauthorizedOverrides = {
       readSession: async () => null,
       readSiteOrigin: () => TEST_ORIGIN,
       publish,
       getStatus,
-    });
-    const authorized = createPublishHandler({
+    };
+    const authorizedOverrides = {
       readSession: async () => TEST_SESSION,
       readSiteOrigin: () => TEST_ORIGIN,
       publish,
       getStatus,
-    });
+    };
+    const unauthorized = createPublishHandler(unauthorizedOverrides);
+    const authorized = createPublishHandler(authorizedOverrides);
 
     expect(
       (await unauthorized(postRequest("/api/admin/publish"))).status,
@@ -823,7 +897,36 @@ describe("publish and rollback admin API", () => {
       },
     });
     expect(publish).toHaveBeenCalledTimes(1);
-    expect(getStatus).toHaveBeenCalledTimes(1);
+    expect(getStatus).not.toHaveBeenCalled();
+  });
+
+  test("returns atomic rollback status and keeps reverse rollback available", async () => {
+    const rollback = vi.fn(async () => ({
+      content: snapshot("Предыдущая версия"),
+      status: {
+        draftUpdatedAt: new Date("2026-07-26T06:00:00.000Z"),
+        publishedAt: new Date("2026-07-26T08:15:00.000Z"),
+        canRollback: true,
+      },
+    }));
+    const handler = createRollbackHandler({
+      readSession: async () => TEST_SESSION,
+      readSiteOrigin: () => TEST_ORIGIN,
+      rollback,
+    });
+
+    const response = await handler(postRequest("/api/admin/rollback"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      status: {
+        draftUpdatedAt: "2026-07-26T06:00:00.000Z",
+        publishedAt: "2026-07-26T08:15:00.000Z",
+        canRollback: true,
+      },
+    });
+    expect(rollback).toHaveBeenCalledOnce();
   });
 
   test("returns a generic conflict when no rollback publication exists", async () => {

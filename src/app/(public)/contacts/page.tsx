@@ -8,6 +8,7 @@ export default function ContactsPage() {
     <ContactsPageView
       content={DEFAULT_SITE_CONTENT.contacts}
       members={DEFAULT_SITE_CONTENT.team.members}
+      mapSearchAddress="Донецк, улица 50-летия СССР, 142"
     />
   );
 }

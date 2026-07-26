@@ -54,6 +54,11 @@ export type SiteContentStatus = {
   canRollback: boolean;
 };
 
+export type SiteContentMutationResult = {
+  content: SiteContentV1;
+  status: SiteContentStatus;
+};
+
 function asClient(client: unknown): SiteContentClient {
   return client as SiteContentClient;
 }
@@ -88,6 +93,21 @@ function parseStoredDate(value: unknown, nullable: boolean): Date | null {
     throw new SiteContentStorageError("INVALID_STORED_CONTENT");
   }
   return value;
+}
+
+function parseSiteContentStatusRow(value: unknown): SiteContentStatus {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new SiteContentStorageError("MISSING_CONTENT");
+  }
+  const record = value as Record<string, unknown>;
+  if (!Object.hasOwn(record, "previousPublished")) {
+    throw new SiteContentStorageError("INVALID_STORED_CONTENT");
+  }
+  return {
+    draftUpdatedAt: parseStoredDate(record.draftUpdatedAt, false) as Date,
+    publishedAt: parseStoredDate(record.publishedAt, true),
+    canRollback: record.previousPublished !== null,
+  };
 }
 
 function toInputJson(value: unknown): Prisma.InputJsonValue {
@@ -167,18 +187,7 @@ export function createSiteContentStore(
         previousPublished: true,
       },
     });
-    if (!row || typeof row !== "object" || Array.isArray(row)) {
-      throw new SiteContentStorageError("MISSING_CONTENT");
-    }
-    const record = row as Record<string, unknown>;
-    if (!Object.hasOwn(record, "previousPublished")) {
-      throw new SiteContentStorageError("INVALID_STORED_CONTENT");
-    }
-    return {
-      draftUpdatedAt: parseStoredDate(record.draftUpdatedAt, false) as Date,
-      publishedAt: parseStoredDate(record.publishedAt, true),
-      canRollback: record.previousPublished !== null,
-    };
+    return parseSiteContentStatusRow(row);
   }
 
   async function saveDraft(input: unknown): Promise<SiteContentV1> {
@@ -202,7 +211,7 @@ export function createSiteContentStore(
     });
   }
 
-  async function publishDraft(): Promise<SiteContentV1> {
+  async function publishDraftWithStatus(): Promise<SiteContentMutationResult> {
     return withSiteContentMutationLock(database, async (rawTransaction) => {
       const transaction = asClient(rawTransaction);
       await lockContentRow(transaction);
@@ -212,22 +221,33 @@ export function createSiteContentStore(
       });
       const draft = parseStoredContent(row.draft);
       const published = parseStoredContent(row.published);
-      const updated = asStoredRow(
-        await transaction.siteContent.update({
-          where: { id: SITE_CONTENT_ID },
-          data: {
-            previousPublished: toInputJson(published),
-            published: toInputJson(draft),
-            publishedAt: new Date(),
-          },
-          select: { published: true },
-        }),
-      );
-      return parseStoredContent(updated.published);
+      const updated = await transaction.siteContent.update({
+        where: { id: SITE_CONTENT_ID },
+        data: {
+          previousPublished: toInputJson(published),
+          published: toInputJson(draft),
+          publishedAt: new Date(),
+        },
+        select: {
+          published: true,
+          previousPublished: true,
+          draftUpdatedAt: true,
+          publishedAt: true,
+        },
+      });
+      const stored = asStoredRow(updated);
+      return {
+        content: parseStoredContent(stored.published),
+        status: parseSiteContentStatusRow(updated),
+      };
     });
   }
 
-  async function rollbackPublished(): Promise<SiteContentV1> {
+  async function publishDraft(): Promise<SiteContentV1> {
+    return (await publishDraftWithStatus()).content;
+  }
+
+  async function rollbackPublishedWithStatus(): Promise<SiteContentMutationResult> {
     return withSiteContentMutationLock(database, async (rawTransaction) => {
       const transaction = asClient(rawTransaction);
       await lockContentRow(transaction);
@@ -240,19 +260,30 @@ export function createSiteContentStore(
       }
       const published = parseStoredContent(row.published);
       const previousPublished = parseStoredContent(row.previousPublished);
-      const updated = asStoredRow(
-        await transaction.siteContent.update({
-          where: { id: SITE_CONTENT_ID },
-          data: {
-            published: toInputJson(previousPublished),
-            previousPublished: toInputJson(published),
-            publishedAt: new Date(),
-          },
-          select: { published: true },
-        }),
-      );
-      return parseStoredContent(updated.published);
+      const updated = await transaction.siteContent.update({
+        where: { id: SITE_CONTENT_ID },
+        data: {
+          published: toInputJson(previousPublished),
+          previousPublished: toInputJson(published),
+          publishedAt: new Date(),
+        },
+        select: {
+          published: true,
+          previousPublished: true,
+          draftUpdatedAt: true,
+          publishedAt: true,
+        },
+      });
+      const stored = asStoredRow(updated);
+      return {
+        content: parseStoredContent(stored.published),
+        status: parseSiteContentStatusRow(updated),
+      };
     });
+  }
+
+  async function rollbackPublished(): Promise<SiteContentV1> {
+    return (await rollbackPublishedWithStatus()).content;
   }
 
   return {
@@ -260,7 +291,9 @@ export function createSiteContentStore(
     getDraftContent,
     getSiteContentStatus,
     saveDraft,
+    publishDraftWithStatus,
     publishDraft,
+    rollbackPublishedWithStatus,
     rollbackPublished,
   };
 }
@@ -271,5 +304,7 @@ export const getPublishedContent = store.getPublishedContent;
 export const getDraftContent = store.getDraftContent;
 export const getSiteContentStatus = store.getSiteContentStatus;
 export const saveDraft = store.saveDraft;
+export const publishDraftWithStatus = store.publishDraftWithStatus;
 export const publishDraft = store.publishDraft;
+export const rollbackPublishedWithStatus = store.rollbackPublishedWithStatus;
 export const rollbackPublished = store.rollbackPublished;

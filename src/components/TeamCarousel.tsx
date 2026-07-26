@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 export type TeamManager = {
+  id: string;
   name: string;
   phone?: string;
   phoneHref?: string;
@@ -19,7 +20,10 @@ export function ManagerCard({ manager }: { manager: TeamManager }) {
     : {};
 
   return (
-    <article className="overflow-hidden rounded-2xl border-2 border-brand bg-white shadow-sm">
+    <article
+      data-manager-id={manager.id}
+      className="overflow-hidden rounded-2xl border-2 border-brand bg-white shadow-sm"
+    >
       {manager.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={manager.photoUrl} alt={manager.name} className="h-80 w-full object-cover object-top" />
@@ -53,10 +57,12 @@ export function ManagerCard({ manager }: { manager: TeamManager }) {
 function ArrowButton({
   direction,
   onClick,
+  disabled = false,
   className = "",
 }: {
   direction: "previous" | "next";
   onClick: () => void;
+  disabled?: boolean;
   className?: string;
 }) {
   const previous = direction === "previous";
@@ -65,7 +71,8 @@ function ArrowButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-brand text-brand transition hover:bg-brand hover:text-on-brand ${className}`}
+      disabled={disabled}
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-brand text-brand transition hover:bg-brand hover:text-on-brand disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
       aria-label={previous ? "Предыдущие менеджеры" : "Следующие менеджеры"}
     >
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="2">
@@ -77,40 +84,62 @@ function ArrowButton({
 
 export function TeamCarousel({ managers }: { managers: TeamManager[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const managerCount = managers.length;
+  const safeActiveIndex = managerCount === 0 ? 0 : activeIndex % managerCount;
+  const canMove = managerCount > 1;
 
   const move = (step: number) => {
-    setActiveIndex((current) => (current + step + managers.length) % managers.length);
+    if (!canMove) return;
+    setActiveIndex(
+      (current) => (current + step + managerCount) % managerCount,
+    );
   };
 
-  const desktopManagers = [0, 1, 2].map(
-    (offset) => managers[(activeIndex + offset) % managers.length],
+  const desktopManagers = Array.from(
+    { length: Math.min(3, managerCount) },
+    (_, offset) => managers[(safeActiveIndex + offset) % managerCount],
   );
+  const desktopColumns = managerCount === 1
+    ? "grid-cols-1"
+    : managerCount === 2
+      ? "grid-cols-2"
+      : "grid-cols-3";
+
+  if (managerCount === 0) {
+    return (
+      <section className="mt-8" aria-label="Менеджеры агентства">
+        <p className="rounded-2xl border border-stone-200 bg-white p-6 text-text/70">
+          Нет сотрудников для показа.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="mt-8" aria-label="Менеджеры агентства">
       <div className="flex items-center justify-center gap-3 sm:gap-6 lg:hidden">
-        <ArrowButton direction="previous" onClick={() => move(-1)} />
+        <ArrowButton direction="previous" onClick={() => move(-1)} disabled={!canMove} />
         <div className="min-w-0 max-w-md flex-1">
-          <ManagerCard manager={managers[activeIndex]} />
+          <ManagerCard manager={managers[safeActiveIndex]} />
         </div>
-        <ArrowButton direction="next" onClick={() => move(1)} />
+        <ArrowButton direction="next" onClick={() => move(1)} disabled={!canMove} />
       </div>
 
       <div className="hidden items-center gap-5 lg:flex">
-        <ArrowButton direction="previous" onClick={() => move(-1)} />
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-5">
+        <ArrowButton direction="previous" onClick={() => move(-1)} disabled={!canMove} />
+        <div className={`grid min-w-0 flex-1 ${desktopColumns} gap-5`}>
           {desktopManagers.map((manager) => (
-            <ManagerCard key={manager.name} manager={manager} />
+            <ManagerCard key={manager.id} manager={manager} />
           ))}
         </div>
-        <ArrowButton direction="next" onClick={() => move(1)} />
+        <ArrowButton direction="next" onClick={() => move(1)} disabled={!canMove} />
       </div>
 
       <p className="mt-4 text-center text-sm font-medium text-text/60 lg:hidden">
-        {activeIndex + 1} из {managers.length}
+        {safeActiveIndex + 1} из {managerCount}
       </p>
       <p className="mt-4 hidden text-center text-sm font-medium text-text/60 lg:block">
-        Начинаем с менеджера {activeIndex + 1} из {managers.length}
+        Начинаем с менеджера {safeActiveIndex + 1} из {managerCount}
       </p>
     </section>
   );

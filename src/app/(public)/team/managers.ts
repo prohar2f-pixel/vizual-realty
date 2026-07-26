@@ -2,6 +2,7 @@ import type { TeamManager } from "../../../components/TeamCarousel";
 
 export const managers: TeamManager[] = [
   {
+    id: "ayanot-elena",
     name: "Аянот Елена",
     phone: "+7 (949) 537-55-65",
     phoneHref: "tel:+79495375565",
@@ -11,6 +12,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/ayanot-elena-card.webp",
   },
   {
+    id: "banityuk-yulia",
     name: "Банитюк Юлия",
     phone: "+7 (949) 578-09-33",
     phoneHref: "tel:+79495780933",
@@ -20,6 +22,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/banityuk-yulia-card.webp",
   },
   {
+    id: "khadzhinova-alina",
     name: "Хаджинова Алина",
     phone: "+7 (949) 400-92-74",
     phoneHref: "tel:+79494009274",
@@ -29,6 +32,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/khadzhinova-alina-card.webp",
   },
   {
+    id: "borokha-yuli",
     name: "Бороха Юли",
     phone: "+7 (918) 295-60-93",
     phoneHref: "tel:+79182956093",
@@ -38,6 +42,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/borokha-yuli-card.webp",
   },
   {
+    id: "melnik-sergey",
     name: "Мельник Сергей",
     phone: "+7 (949) 647-72-56",
     phoneHref: "tel:+79496477256",
@@ -47,6 +52,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/melnik-sergey-card.webp",
   },
   {
+    id: "medvedeva-elena",
     name: "Медведева Елена",
     phone: "+7 (949) 715-80-77",
     phoneHref: "tel:+79497158077",
@@ -56,6 +62,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/medvedeva-elena-card.webp",
   },
   {
+    id: "olga-krivutsa",
     name: "Ольга Кривуца",
     phone: "+7 (978) 059-26-69",
     phoneHref: "tel:+79780592669",
@@ -65,6 +72,7 @@ export const managers: TeamManager[] = [
     photoUrl: "/managers/olga-krivutsa-card.webp",
   },
   {
+    id: "tsarenko-viktoria",
     name: "Тсаренко Виктория",
     phone: "+7 (963) 532-80-09",
     phoneHref: "tel:+79635328009",
