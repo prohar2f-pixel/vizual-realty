@@ -71,11 +71,32 @@ test("rejects Markdown list syntax in editable text", () => {
   expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
 });
 
+test("rejects Markdown reference links and definitions in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "[Каталог][docs]\n\n[docs]: /catalog";
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
+test("rejects Markdown thematic breaks in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "---";
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
 test("allows ordinary Russian punctuation in editable text", () => {
   const content = copyDefaultContent();
   content.home.heroTitle = "«Визуал»: продажа, покупка — без комиссии!";
 
   expect(parseSiteContent(content).home.heroTitle).toBe("«Визуал»: продажа, покупка — без комиссии!");
+});
+
+test("allows ordinary hyphens and dashes in editable text", () => {
+  const content = copyDefaultContent();
+  content.home.heroTitle = "Юго-восток — спокойный район";
+
+  expect(parseSiteContent(content).home.heroTitle).toBe("Юго-восток — спокойный район");
 });
 
 test("rejects content that inherits required and unknown fields from a prototype", () => {

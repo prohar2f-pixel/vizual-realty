@@ -94,8 +94,8 @@ const MAX_TEAM_MEMBERS = 30;
 const MAX_INTRODUCTION_PARAGRAPHS = 12;
 const MAX_SERVICES = 12;
 const FORBIDDEN_TEXT = /[<>]|\[[^\]]*\]\([^)]*\)|\b[a-z][a-z0-9+.-]*:/i;
-const INLINE_MARKDOWN = /(?:\*\*|__|~~|`)|(?:^|\s)(?:\*[^*\n]+\*|_[^_\n]+_)/;
-const BLOCK_MARKDOWN = /^\s*(?:#{1,6}\s|[-+*]\s|\d+[.)]\s)/m;
+const MARKDOWN_META_CHARACTERS = /[*_`\[\]#~|]/;
+const BLOCK_MARKDOWN = /^\s*(?:#{1,6}\s|[-+*]\s|\d+[.)]\s|(?:[-=*_]\s*){3,}|\[[^\]\n]+\]:\s*\S+|(?: {4}|\t)\S)/m;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TELEGRAM_USERNAME = /^[A-Za-z][A-Za-z0-9_]{4,31}$/;
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -142,7 +142,7 @@ function normalizeWhitespace(value: string) {
 }
 
 function containsForbiddenText(value: string, normalized: string) {
-  return FORBIDDEN_TEXT.test(normalized) || INLINE_MARKDOWN.test(normalized) || BLOCK_MARKDOWN.test(value);
+  return FORBIDDEN_TEXT.test(normalized) || MARKDOWN_META_CHARACTERS.test(normalized) || BLOCK_MARKDOWN.test(value);
 }
 
 function text(
