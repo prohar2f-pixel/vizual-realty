@@ -69,6 +69,16 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
   let failTransactionUpdate = false;
   const operations: string[] = [];
   let transactionCount = 0;
+  let rowLockTail = Promise.resolve();
+
+  function acquireRowLock(): Promise<() => void> {
+    const previous = rowLockTail;
+    let release: () => void = () => undefined;
+    rowLockTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return previous.then(() => release);
+  }
 
   function project(current: StoredSiteContent | null) {
     return current === null ? null : clone(current);
@@ -123,16 +133,29 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
       operations.push("$transaction");
       transactionCount += 1;
       let working = row === null ? null : clone(row);
-      const transaction = clientFor(
-        () => working,
-        (next) => {
-          working = next;
+      let releaseRowLock: (() => void) | undefined;
+      const transaction = {
+        ...clientFor(
+          () => working,
+          (next) => {
+            working = next;
+          },
+          "tx.",
+        ),
+        async $queryRaw<T>() {
+          operations.push("tx.$queryRaw");
+          releaseRowLock = await acquireRowLock();
+          working = row === null ? null : clone(row);
+          return (working === null ? [] : [{ id: "site" }]) as T;
         },
-        "tx.",
-      );
-      const result = await run(transaction);
-      row = working;
-      return result;
+      };
+      try {
+        const result = await run(transaction);
+        row = working;
+        return result;
+      } finally {
+        releaseRowLock?.();
+      }
     },
     inspect() {
       return project(row);
@@ -257,6 +280,7 @@ describe("site content publication history", () => {
     expect(client.transactionCount).toBe(1);
     expect(client.operations).toEqual([
       "$transaction",
+      "tx.$queryRaw",
       "tx.findUnique",
       "tx.update",
     ]);
@@ -293,6 +317,34 @@ describe("site content publication history", () => {
       snapshot("Предыдущая версия"),
     );
     expect(client.transactionCount).toBe(2);
+    expect(client.operations).toEqual([
+      "$transaction",
+      "tx.$queryRaw",
+      "tx.findUnique",
+      "tx.update",
+      "$transaction",
+      "tx.$queryRaw",
+      "tx.findUnique",
+      "tx.update",
+    ]);
+  });
+
+  test("serializes concurrent rollbacks so two swaps restore the original pair", async () => {
+    const before = storedRow();
+    const client = createPrismaLikeClient(before);
+    const store = createSiteContentStore(client);
+
+    const [first, second] = await Promise.all([
+      store.rollbackPublished(),
+      store.rollbackPublished(),
+    ]);
+
+    expect(first.home.heroTitle).toBe("Предыдущая версия");
+    expect(second.home.heroTitle).toBe("Опубликовано");
+    expect(client.inspect()?.published).toEqual(before.published);
+    expect(client.inspect()?.previousPublished).toEqual(
+      before.previousPublished,
+    );
   });
 
   test("rejects rollback without a previous publication and leaves state intact", async () => {
@@ -309,7 +361,11 @@ describe("site content publication history", () => {
     );
 
     expect(client.inspect()).toEqual(before);
-    expect(client.operations).toEqual(["$transaction", "tx.findUnique"]);
+    expect(client.operations).toEqual([
+      "$transaction",
+      "tx.$queryRaw",
+      "tx.findUnique",
+    ]);
   });
 });
 

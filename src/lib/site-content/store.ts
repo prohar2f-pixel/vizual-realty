@@ -1,4 +1,4 @@
-import type { Prisma } from "../../generated/prisma/client";
+import { Prisma } from "../../generated/prisma/client";
 import { db } from "../db";
 import { DEFAULT_SITE_CONTENT } from "./defaults";
 import { parseSiteContent, type SiteContentV1 } from "./schema";
@@ -16,6 +16,7 @@ type SiteContentClient = {
     findUnique(args: unknown): Promise<unknown>;
     update(args: unknown): Promise<unknown>;
   };
+  $queryRaw<T>(query: unknown): Promise<T>;
   $transaction<T>(
     run: (transaction: unknown) => Promise<T>,
   ): Promise<T>;
@@ -105,6 +106,15 @@ async function findContentRow(
   return asStoredRow(row);
 }
 
+async function lockContentRow(client: SiteContentClient): Promise<void> {
+  await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT "id"
+    FROM "SiteContent"
+    WHERE "id" = ${SITE_CONTENT_ID}
+    FOR UPDATE
+  `);
+}
+
 export function createSiteContentStore(client: unknown) {
   const database = asClient(client);
 
@@ -141,6 +151,7 @@ export function createSiteContentStore(client: unknown) {
   async function publishDraft(): Promise<SiteContentV1> {
     return database.$transaction(async (rawTransaction) => {
       const transaction = asClient(rawTransaction);
+      await lockContentRow(transaction);
       const row = await findContentRow(transaction, {
         draft: true,
         published: true,
@@ -165,6 +176,7 @@ export function createSiteContentStore(client: unknown) {
   async function rollbackPublished(): Promise<SiteContentV1> {
     return database.$transaction(async (rawTransaction) => {
       const transaction = asClient(rawTransaction);
+      await lockContentRow(transaction);
       const row = await findContentRow(transaction, {
         published: true,
         previousPublished: true,
