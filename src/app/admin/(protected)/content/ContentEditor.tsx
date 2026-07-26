@@ -9,6 +9,7 @@ import type {
   SiteContentV1,
   TeamMemberV1,
 } from "../../../../lib/site-content/schema";
+import { safeParseSiteContent } from "../../../../lib/site-content/schema";
 
 type ContentTab = "home" | "about" | "team" | "contacts";
 
@@ -423,6 +424,64 @@ function firstIssue(
   return issues[path]?.[0];
 }
 
+function pathIsWithinScope(path: string, scope: string) {
+  return (
+    path === scope ||
+    path.startsWith(`${scope}.`) ||
+    path.startsWith(`${scope}[`)
+  );
+}
+
+export function issueMessagesWithin(
+  issues: Readonly<Record<string, string[]>>,
+  scope: string,
+) {
+  return Array.from(
+    new Set(
+      Object.entries(issues).flatMap(([path, messages]) =>
+        pathIsWithinScope(path, scope) ? messages : [],
+      ),
+    ),
+  );
+}
+
+function issueMessagesForTab(
+  issues: Readonly<Record<string, string[]>>,
+  tab: ContentTab,
+  draft: SiteContentV1,
+) {
+  const scopes =
+    tab === "home" ? ["navigation", "footer", "home"] : [tab];
+  return Array.from(
+    new Set(
+      Object.entries(issues).flatMap(([path, messages]) => {
+        if (!scopes.some((scope) => pathIsWithinScope(path, scope))) return [];
+        if (
+          [
+            "home.benefits",
+            "about.introduction",
+            "about.services",
+            "team.members",
+          ].some((scope) => pathIsWithinScope(path, scope))
+        ) {
+          return [];
+        }
+        const directField =
+          /^(navigation|footer|home|about|team|contacts)\.([^.\[]+)$/.exec(
+            path,
+          );
+        if (directField) {
+          const section = draft[
+            directField[1] as Exclude<keyof SiteContentV1, "schemaVersion">
+          ] as unknown as Record<string, unknown>;
+          if (typeof section[directField[2]] === "string") return [];
+        }
+        return messages;
+      }),
+    ),
+  );
+}
+
 function tabForIssue(path: string): ContentTab {
   if (path.startsWith("about.")) return "about";
   if (path.startsWith("team.")) return "team";
@@ -487,6 +546,27 @@ function Section({
       {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       <div className="mt-5 grid gap-5 sm:grid-cols-2">{children}</div>
     </section>
+  );
+}
+
+function IssueSummary({
+  scope,
+  messages,
+}: Readonly<{ scope: string; messages: string[] }>) {
+  if (!messages.length) return null;
+  return (
+    <div
+      role="alert"
+      data-issue-scope={scope}
+      className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
+    >
+      <p className="font-semibold">Проверьте этот раздел:</p>
+      <ul className="mt-1 list-disc space-y-1 pl-5">
+        {messages.map((message) => (
+          <li key={message}>{message}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -573,13 +653,14 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
         });
         return;
       }
-      if (!payload.content || typeof payload.content !== "object") {
-        throw new Error("Некорректный ответ сервера");
+      const parsedContent = safeParseSiteContent(payload.content);
+      if (!parsedContent.success) {
+        throw new Error("Сервер вернул некорректный черновик.");
       }
       dispatch({
         type: "save-success",
         submittedKey,
-        content: payload.content as SiteContentV1,
+        content: parsedContent.data,
       });
     } catch (error) {
       dispatch({
@@ -636,6 +717,10 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
         aria-labelledby={`content-tab-${activeTab}`}
         className="space-y-6"
       >
+        <IssueSummary
+          scope={`tab:${activeTab}`}
+          messages={issueMessagesForTab(state.issues, activeTab, state.draft)}
+        />
         {activeTab === "home" && (
           <>
             <Section
@@ -677,6 +762,13 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
                 <TextField label="Вступление" path="home.whyIntroduction" value={state.draft.home.whyIntroduction} maxLength={1200} multiline rows={5} disabled={locked} issue={fieldIssue("home.whyIntroduction")} onChange={(value) => setText("home.whyIntroduction", value)} />
               </div>
               <div className="space-y-4 sm:col-span-2">
+                <IssueSummary
+                  scope="home.benefits"
+                  messages={issueMessagesWithin(
+                    state.issues,
+                    "home.benefits",
+                  )}
+                />
                 {state.draft.home.benefits.map((benefit, index) => (
                   <div key={index} className="rounded-lg border border-stone-200 p-4">
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -729,6 +821,13 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
 
             <Section title="Вступление" description="До 12 абзацев, каждый до 1200 символов.">
               <div className="space-y-4 sm:col-span-2">
+                <IssueSummary
+                  scope="about.introduction"
+                  messages={issueMessagesWithin(
+                    state.issues,
+                    "about.introduction",
+                  )}
+                />
                 {state.draft.about.introduction.map((paragraph, index) => (
                   <div key={index} className="rounded-lg border border-stone-200 p-4">
                     <TextField label={`Абзац ${index + 1}`} path={`about.introduction[${index}]`} value={paragraph} maxLength={1200} multiline rows={4} disabled={locked} issue={fieldIssue(`about.introduction[${index}]`)} onChange={(value) => dispatch({ type: "set-introduction", index, value })} />
@@ -745,6 +844,13 @@ export function ContentEditor({ initialDraft }: ContentEditorProps) {
 
             <Section title="Услуги" description="До 12 пунктов, каждый до 1200 символов.">
               <div className="space-y-4 sm:col-span-2">
+                <IssueSummary
+                  scope="about.services"
+                  messages={issueMessagesWithin(
+                    state.issues,
+                    "about.services",
+                  )}
+                />
                 {state.draft.about.services.map((service, index) => (
                   <div key={index} className="rounded-lg border border-stone-200 p-4">
                     <TextField label={`Услуга ${index + 1}`} path={`about.services[${index}]`} value={service} maxLength={1200} multiline rows={3} disabled={locked} issue={fieldIssue(`about.services[${index}]`)} onChange={(value) => dispatch({ type: "set-service", index, value })} />

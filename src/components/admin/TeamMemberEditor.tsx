@@ -93,6 +93,23 @@ function firstIssue(
   return issues[path]?.[0];
 }
 
+function memberIssueMessages(
+  issues: Readonly<Record<string, string[]>>,
+  basePath: string,
+) {
+  return Array.from(
+    new Set(
+      Object.entries(issues).flatMap(([path, messages]) =>
+        path === basePath ||
+        path.startsWith(`${basePath}.`) ||
+        path.startsWith(`${basePath}[`)
+          ? messages
+          : [],
+      ),
+    ),
+  );
+}
+
 export function TeamMemberEditor({
   member,
   index,
@@ -110,6 +127,7 @@ export function TeamMemberEditor({
   const displayName = member.name.trim() || `Сотрудник ${index + 1}`;
   const previewUrl = teamImagePreviewUrl(member.imageId);
   const locked = disabled || uploading;
+  const cardIssues = memberIssueMessages(issues, basePath);
 
   async function handleFile(file: File | undefined) {
     if (!file || locked) return;
@@ -190,13 +208,19 @@ export function TeamMemberEditor({
         </div>
       </header>
 
-      {firstIssue(issues, basePath) && (
-        <p
+      {cardIssues.length > 0 && (
+        <div
           role="alert"
+          data-issue-scope={basePath}
           className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-800"
         >
-          {firstIssue(issues, basePath)}
-        </p>
+          <p>Проверьте карточку сотрудника:</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {cardIssues.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[9rem_1fr]">
