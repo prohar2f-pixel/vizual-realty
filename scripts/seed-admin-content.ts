@@ -8,15 +8,47 @@ import {
 
 const SITE_CONTENT_ID = "site";
 
+type SeedAdminContentClient = {
+  siteContent: {
+    upsert(args: {
+      where: { id: string };
+      update: Record<string, never>;
+      create: {
+        id: string;
+        draft: Prisma.InputJsonValue;
+        published: Prisma.InputJsonValue;
+        draftUpdatedAt: Date;
+        publishedAt: Date;
+      };
+    }): Promise<unknown>;
+  };
+  featuredProperty: {
+    count(): Promise<number>;
+    createMany(args: {
+      data: Array<{ propertyId: string; position: 1 | 2 | 3 }>;
+    }): Promise<unknown>;
+  };
+  property: {
+    findMany(args: {
+      where: { isFeed: true };
+      orderBy: { price: "desc" };
+      take: 3;
+      select: { id: true };
+    }): Promise<Array<{ id: string }>>;
+  };
+};
+
 function toJson(value: SiteContentV1): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
-export async function seedAdminContent(): Promise<void> {
+export async function seedAdminContentWith(
+  client: SeedAdminContentClient,
+): Promise<void> {
   const now = new Date();
   const content = toJson(DEFAULT_SITE_CONTENT);
 
-  await db.siteContent.upsert({
+  await client.siteContent.upsert({
     where: { id: SITE_CONTENT_ID },
     update: {},
     create: {
@@ -28,12 +60,12 @@ export async function seedAdminContent(): Promise<void> {
     },
   });
 
-  const featuredCount = await db.featuredProperty.count();
+  const featuredCount = await client.featuredProperty.count();
   if (featuredCount !== 0) {
     return;
   }
 
-  const properties = await db.property.findMany({
+  const properties = await client.property.findMany({
     where: { isFeed: true },
     orderBy: { price: "desc" },
     take: 3,
@@ -41,13 +73,17 @@ export async function seedAdminContent(): Promise<void> {
   });
 
   if (properties.length > 0) {
-    await db.featuredProperty.createMany({
+    await client.featuredProperty.createMany({
       data: properties.map((property, index) => ({
         propertyId: property.id,
-        position: index + 1,
+        position: (index + 1) as 1 | 2 | 3,
       })),
     });
   }
+}
+
+export async function seedAdminContent(): Promise<void> {
+  await seedAdminContentWith(db);
 }
 
 if (process.argv[1]?.endsWith("seed-admin-content.ts")) {

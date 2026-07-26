@@ -20,6 +20,8 @@ export type SiteContentV1 = {
     contacts: string;
   };
   footer: {
+    tagline: string;
+    sectionsTitle: string;
     catalogLabel: string;
     contactsTitle: string;
     address: string;
@@ -81,6 +83,8 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
     contacts: "Контакты",
   },
   footer: {
+    tagline: "Продажа квартир и домов.",
+    sectionsTitle: "Разделы",
     catalogLabel: "Каталог",
     contactsTitle: "Контакты",
     address: "г. Донецк, ул. 50 лет СССР, 142",

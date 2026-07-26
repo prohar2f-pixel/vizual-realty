@@ -4,7 +4,8 @@ CREATE TABLE "FeaturedProperty" (
     "position" INTEGER NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "FeaturedProperty_pkey" PRIMARY KEY ("propertyId")
+    CONSTRAINT "FeaturedProperty_pkey" PRIMARY KEY ("propertyId"),
+    CONSTRAINT "FeaturedProperty_position_check" CHECK ("position" BETWEEN 1 AND 3)
 );
 
 -- CreateTable
