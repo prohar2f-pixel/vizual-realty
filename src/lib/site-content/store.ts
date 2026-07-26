@@ -1,9 +1,14 @@
 import { Prisma } from "../../generated/prisma/client";
+import { isDatabaseAvailabilityError } from "../database-errors";
 import { db } from "../db";
 import { validateConfiguredTeamImageReferences } from "../team-image-files";
 import { DEFAULT_SITE_CONTENT } from "./defaults";
 import { withSiteContentMutationLock } from "./mutation-lock";
-import { parseSiteContent, type SiteContentV1 } from "./schema";
+import {
+  parseSiteContent,
+  SiteContentValidationError,
+  type SiteContentV1,
+} from "./schema";
 
 const SITE_CONTENT_ID = "site";
 
@@ -82,8 +87,11 @@ function asStoredRow(value: unknown): StoredContentRow {
 function parseStoredContent(value: unknown): SiteContentV1 {
   try {
     return parseSiteContent(value);
-  } catch {
-    throw new SiteContentStorageError("INVALID_STORED_CONTENT");
+  } catch (error) {
+    if (error instanceof SiteContentValidationError) {
+      throw new SiteContentStorageError("INVALID_STORED_CONTENT");
+    }
+    throw error;
   }
 }
 
@@ -167,7 +175,13 @@ export function createSiteContentStore(
     try {
       const row = await findContentRow(database, { published: true });
       return parseStoredContent(row.published);
-    } catch {
+    } catch (error) {
+      if (
+        !(error instanceof SiteContentStorageError) &&
+        !isDatabaseAvailabilityError(error)
+      ) {
+        throw error;
+      }
       console.error("site_content_fallback");
       return cloneDefault();
     }

@@ -210,7 +210,9 @@ test("public pages render code defaults when the published loader falls back", a
   const store = createSiteContentStore({
     siteContent: {
       findUnique: async () => {
-        throw new Error("database unavailable");
+        const error = new Error("database unavailable");
+        error.name = "PrismaClientInitializationError";
+        throw error;
       },
     },
   });

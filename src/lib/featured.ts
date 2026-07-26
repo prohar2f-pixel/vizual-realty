@@ -1,4 +1,5 @@
 import { Prisma } from "../generated/prisma/client";
+import { isDatabaseAvailabilityError } from "./database-errors";
 import { db } from "./db";
 
 export type PropertyCardData = {
@@ -217,25 +218,6 @@ async function readPublicFeatured(client: unknown) {
   if (content) return [];
 
   return readLegacyTopThree(database);
-}
-
-function isDatabaseAvailabilityError(error: unknown) {
-  if (!(error instanceof Error)) return false;
-  if (error.name === "PrismaClientInitializationError") return true;
-  if (error.name !== "PrismaClientKnownRequestError") return false;
-  const code = (error as Error & { code?: unknown }).code;
-  return typeof code === "string" && [
-    "P1000",
-    "P1001",
-    "P1002",
-    "P1003",
-    "P1008",
-    "P1009",
-    "P1010",
-    "P1011",
-    "P1013",
-    "P1017",
-  ].includes(code);
 }
 
 export function getAdminFeaturedProperties(

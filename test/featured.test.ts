@@ -218,6 +218,29 @@ function client(
   ).initialize();
 }
 
+function prismaKnownRequestError(
+  code: string,
+  kind?: string,
+): Error & { code: string; meta?: Record<string, unknown> } {
+  const error = new Error("private database connection detail") as Error & {
+    code: string;
+    clientVersion: string;
+    meta?: Record<string, unknown>;
+  };
+  error.name = "PrismaClientKnownRequestError";
+  error.code = code;
+  error.clientVersion = "7.8.0";
+  if (kind) {
+    error.meta = {
+      driverAdapterError: {
+        name: "DriverAdapterError",
+        cause: { kind },
+      },
+    };
+  }
+  return error;
+}
+
 describe("featured property replacement", () => {
   test.each([
     [[], "INVALID_COUNT"],
@@ -387,6 +410,62 @@ describe("featured property reads", () => {
     expect(errorSpy).toHaveBeenCalledWith("featured_properties_fallback");
 
     errorSpy.mockRestore();
+  });
+
+  test("returns an empty safe state when Prisma reports too many connections", async () => {
+    const database = client([property("automatic")], [], false);
+    database.featuredProperty.findMany = async () => {
+      throw prismaKnownRequestError("P2037");
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(getFeaturedProperties(database)).resolves.toEqual([]);
+    expect(errorSpy.mock.calls).toEqual([["featured_properties_fallback"]]);
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(
+      "private database connection detail",
+    );
+    errorSpy.mockRestore();
+  });
+
+  test("returns an empty safe state for a nested raw-query connectivity failure", async () => {
+    const database = client(
+      [property("saved")],
+      [{ propertyId: "saved", position: 1 }],
+    );
+    database.$queryRaw = async () => {
+      throw prismaKnownRequestError("P2010", "ConnectionClosed");
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(getFeaturedProperties(database)).resolves.toEqual([]);
+    expect(errorSpy).toHaveBeenCalledWith("featured_properties_fallback");
+    errorSpy.mockRestore();
+  });
+
+  test("rethrows a P2010 raw-query syntax error instead of hiding it", async () => {
+    const database = client(
+      [property("saved")],
+      [{ propertyId: "saved", position: 1 }],
+    );
+    const failure = prismaKnownRequestError("P2010", "postgres");
+    failure.meta = {
+      driverAdapterError: {
+        name: "DriverAdapterError",
+        cause: {
+          kind: "postgres",
+          code: "42601",
+          severity: "ERROR",
+          message: "syntax error",
+        },
+      },
+    };
+    database.$queryRaw = async () => {
+      throw failure;
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(getFeaturedProperties(database)).rejects.toBe(failure);
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   test("does not hide programming errors behind the featured empty state", async () => {

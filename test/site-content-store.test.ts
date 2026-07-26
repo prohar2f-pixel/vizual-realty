@@ -80,9 +80,32 @@ function storedRow(
   };
 }
 
+function prismaKnownRequestError(
+  code: string,
+  kind?: string,
+): Error & { code: string; meta?: Record<string, unknown> } {
+  const error = new Error("database-secret-detail") as Error & {
+    code: string;
+    clientVersion: string;
+    meta?: Record<string, unknown>;
+  };
+  error.name = "PrismaClientKnownRequestError";
+  error.code = code;
+  error.clientVersion = "7.8.0";
+  if (kind) {
+    error.meta = {
+      driverAdapterError: {
+        name: "DriverAdapterError",
+        cause: { kind },
+      },
+    };
+  }
+  return error;
+}
+
 function createPrismaLikeClient(initial: StoredSiteContent | null) {
   let row = initial === null ? null : clone(initial);
-  let failFind = false;
+  let findFailure: Error | null = null;
   let failTransactionUpdate = false;
   let corruptTransactionUpdateMetadata = false;
   const operations: string[] = [];
@@ -121,7 +144,7 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
       siteContent: {
         async findUnique() {
           operations.push(`${prefix}findUnique`);
-          if (failFind) throw new Error("database-secret-detail");
+          if (findFailure) throw findFailure;
           return project(read());
         },
         async update(args: {
@@ -207,8 +230,8 @@ function createPrismaLikeClient(initial: StoredSiteContent | null) {
     get transactionCount() {
       return transactionCount;
     },
-    setFindFailure(value: boolean) {
-      failFind = value;
+    setFindFailure(value: Error | null) {
+      findFailure = value;
     },
     setTransactionUpdateFailure(value: boolean) {
       failTransactionUpdate = value;
@@ -238,16 +261,16 @@ afterEach(async () => {
 
 describe("site content public reads", () => {
   test.each([
-    ["a missing row", null, false],
-    ["a database failure", storedRow(), true],
+    ["a missing row", null, null],
+    ["a database failure", storedRow(), prismaKnownRequestError("P2037")],
     [
       "invalid stored JSON",
       { ...storedRow(), published: { schemaVersion: 1, private: "value" } },
-      false,
+      null,
     ],
-  ])("falls back safely for %s", async (_case, initial, failFind) => {
+  ])("falls back safely for %s", async (_case, initial, findFailure) => {
     const client = createPrismaLikeClient(initial);
-    client.setFindFailure(failFind);
+    client.setFindFailure(findFailure);
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const store = createSiteContentStore(client);
 
@@ -264,6 +287,46 @@ describe("site content public reads", () => {
     ]);
     expect(JSON.stringify(error.mock.calls)).not.toContain("private");
     expect(JSON.stringify(error.mock.calls)).not.toContain("database-secret-detail");
+  });
+
+  test.each([
+    [
+      "client",
+      new TypeError("client-programming-error"),
+      (failure: TypeError) => ({
+        siteContent: {
+          async findUnique() {
+            throw failure;
+          },
+        },
+      }),
+    ],
+    [
+      "parser",
+      new TypeError("parser-programming-error"),
+      (failure: TypeError) => ({
+        siteContent: {
+          async findUnique() {
+            const published = new Proxy({}, {
+              getPrototypeOf() {
+                throw failure;
+              },
+            });
+            return { published };
+          },
+        },
+      }),
+    ],
+  ])("rethrows an unexpected TypeError from the %s without fallback", async (
+    _source,
+    failure,
+    createClient,
+  ) => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const store = createSiteContentStore(createClient(failure));
+
+    await expect(store.getPublishedContent()).rejects.toBe(failure);
+    expect(error).not.toHaveBeenCalled();
   });
 
   test("returns isolated validated published snapshots", async () => {

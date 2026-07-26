@@ -5,15 +5,24 @@ import {
   DEFAULT_SITE_CONTENT,
   type SiteContentV1,
 } from "../src/lib/site-content/defaults";
+import { withSiteContentMutationLock } from "../src/lib/site-content/mutation-lock";
 
 const SITE_CONTENT_ID = "site";
 
 type SeedAdminContentClient = {
+  $transaction<T>(
+    run: (transaction: unknown) => Promise<T>,
+  ): Promise<T>;
+};
+
+type SeedAdminContentTransaction = {
   siteContent: {
-    upsert(args: {
+    findUnique(args: {
       where: { id: string };
-      update: Record<string, never>;
-      create: {
+      select: { id: true };
+    }): Promise<unknown>;
+    create(args: {
+      data: {
         id: string;
         draft: Prisma.InputJsonValue;
         published: Prisma.InputJsonValue;
@@ -23,7 +32,7 @@ type SeedAdminContentClient = {
     }): Promise<unknown>;
   };
   featuredProperty: {
-    count(): Promise<number>;
+    deleteMany(): Promise<unknown>;
     createMany(args: {
       data: Array<{ propertyId: string; position: 1 | 2 | 3 }>;
     }): Promise<unknown>;
@@ -48,38 +57,41 @@ export async function seedAdminContentWith(
   const now = new Date();
   const content = toJson(DEFAULT_SITE_CONTENT);
 
-  await client.siteContent.upsert({
-    where: { id: SITE_CONTENT_ID },
-    update: {},
-    create: {
-      id: SITE_CONTENT_ID,
-      draft: content,
-      published: content,
-      draftUpdatedAt: now,
-      publishedAt: now,
-    },
-  });
-
-  const featuredCount = await client.featuredProperty.count();
-  if (featuredCount !== 0) {
-    return;
-  }
-
-  const properties = await client.property.findMany({
-    where: { isFeed: true },
-    orderBy: { price: "desc" },
-    take: 3,
-    select: { id: true },
-  });
-
-  if (properties.length > 0) {
-    await client.featuredProperty.createMany({
-      data: properties.map((property, index) => ({
-        propertyId: property.id,
-        position: (index + 1) as 1 | 2 | 3,
-      })),
+  await withSiteContentMutationLock(client, async (rawTransaction) => {
+    const transaction = rawTransaction as SeedAdminContentTransaction;
+    const existing = await transaction.siteContent.findUnique({
+      where: { id: SITE_CONTENT_ID },
+      select: { id: true },
     });
-  }
+    if (existing) return;
+
+    const properties = await transaction.property.findMany({
+      where: { isFeed: true },
+      orderBy: { price: "desc" },
+      take: 3,
+      select: { id: true },
+    });
+
+    await transaction.featuredProperty.deleteMany();
+    await transaction.siteContent.create({
+      data: {
+        id: SITE_CONTENT_ID,
+        draft: content,
+        published: content,
+        draftUpdatedAt: now,
+        publishedAt: now,
+      },
+    });
+
+    if (properties.length > 0) {
+      await transaction.featuredProperty.createMany({
+        data: properties.map((property, index) => ({
+          propertyId: property.id,
+          position: (index + 1) as 1 | 2 | 3,
+        })),
+      });
+    }
+  });
 }
 
 export async function seedAdminContent(): Promise<void> {
