@@ -45,7 +45,7 @@ export function createLogoutHandler(
         return json({ ok: false, error: "Требуется вход" }, 401);
       }
       (await dependencies.getCookieStore()).delete(ADMIN_SESSION_COOKIE);
-      return json({ ok: true }, 200);
+      return Response.redirect(new URL("/admin/login", config.siteOrigin), 303);
     } catch (error) {
       if (error instanceof AdminRequestError) {
         return json({ ok: false, error: "Запрос отклонён" }, error.status);

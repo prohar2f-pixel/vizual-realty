@@ -1,4 +1,4 @@
-import type { TeamManager } from "../../components/TeamCarousel";
+import type { TeamManager } from "../../../components/TeamCarousel";
 
 export const managers: TeamManager[] = [
   {

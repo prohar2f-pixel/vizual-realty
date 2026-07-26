@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
-import Home from "../src/app/page";
+import Home from "../src/app/(public)/page";
 
 vi.mock("@/lib/db", () => ({
   db: { property: { findMany: vi.fn().mockResolvedValue([]) } },

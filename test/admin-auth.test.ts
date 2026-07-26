@@ -453,7 +453,8 @@ describe("admin login and logout routes", () => {
     });
     const response = await withSession(request);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe(`${TEST_ORIGIN}/admin/login`);
     expect(deleteCookie).toHaveBeenCalledWith("vizual_admin_session");
   });
 });

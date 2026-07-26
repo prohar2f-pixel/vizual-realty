@@ -5,7 +5,7 @@ import {
   ManagerCard,
   type TeamManager,
 } from "../src/components/TeamCarousel";
-import { managers } from "../src/app/team/managers";
+import { managers } from "../src/app/(public)/team/managers";
 
 test("renders an e-mail action without opening a browser tab", () => {
   const manager: TeamManager = {

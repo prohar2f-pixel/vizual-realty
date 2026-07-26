@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import ContactsPage from "../src/app/contacts/page";
+import ContactsPage from "../src/app/(public)/contacts/page";
 
 test("contacts page shows Olga and Viktoria instead of a placeholder", () => {
   const html = renderToStaticMarkup(<ContactsPage />);
