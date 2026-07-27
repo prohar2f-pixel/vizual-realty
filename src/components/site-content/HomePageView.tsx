@@ -28,7 +28,6 @@ export function HomePageView({
           alt="Команда агентства недвижимости «Визуал»"
           fill
           priority
-          unoptimized
           sizes="100vw"
           className="object-cover object-center"
         />
