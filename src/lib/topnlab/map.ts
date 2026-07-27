@@ -4,6 +4,7 @@ import {
   formatTopnlabAddress,
   normalizePropertyDescription,
 } from "../property-content";
+import { resolveTopnlabManager } from "./manager";
 
 export type MappedAgent = { id: string; name: string; phone?: string; photoUrl?: string };
 
@@ -94,6 +95,29 @@ export function mapTopnlabEntity(e: any): MappedProperty {
   const objectType = e.object_type ?? e.realty_type;
   const address = formatTopnlabAddress(e) ?? undefined;
   const rooms = normalizeRooms(e.rooms);
+  const managerSource = e.user ?? e.agent;
+  const managerProfile = resolveTopnlabManager(e);
+  const managerId =
+    e.created_by ?? e.user_id ?? e.agent_id ?? managerSource?.id ?? managerProfile?.id;
+  const manager =
+    managerId == null ||
+    (typeof managerSource?.name !== "string" && !managerProfile)
+      ? undefined
+      : {
+          id: String(managerId),
+          name:
+            typeof managerSource?.name === "string"
+              ? managerSource.name
+              : managerProfile!.name,
+          phone:
+            typeof managerSource?.phone === "string"
+              ? managerSource.phone
+              : managerProfile?.phone,
+          photoUrl:
+            typeof managerSource?.photo === "string"
+              ? managerSource.photo
+              : managerProfile?.photo,
+        };
 
   return {
     id: String(e.id),
@@ -110,8 +134,6 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     description: normalizePropertyDescription(e.description),
     photos: mapPhotoUrls(e.photos),
     isFeed: e.is_feed !== false,
-    agent: e.agent
-      ? { id: String(e.agent.id), name: e.agent.name, phone: e.agent.phone, photoUrl: e.agent.photo }
-      : undefined,
+    agent: manager,
   };
 }
