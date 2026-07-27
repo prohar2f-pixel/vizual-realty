@@ -27,5 +27,9 @@ test("serves the LCP hero from prebuilt responsive AVIF files", async () => {
     fileURLToPath(new URL("../public/team-hero-mobile.avif", import.meta.url)),
   ).metadata();
   expect(mobile.width).toBeGreaterThanOrEqual(1440);
+  const desktop = await sharp(
+    fileURLToPath(new URL("../public/team-hero.avif", import.meta.url)),
+  ).metadata();
+  expect(desktop.width).toBeGreaterThanOrEqual(1920);
   expect(nextConfig.images?.formats).toEqual(["image/avif", "image/webp"]);
 });
