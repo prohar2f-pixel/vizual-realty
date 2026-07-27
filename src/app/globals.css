@@ -23,6 +23,22 @@ body {
   color: var(--color-text);
 }
 
+.hero-heading-outline {
+  -webkit-text-stroke: 1px var(--color-brand-dim);
+  paint-order: stroke fill;
+  text-shadow:
+    -1px -1px 0 var(--color-brand-dim),
+    1px -1px 0 var(--color-brand-dim),
+    -1px 1px 0 var(--color-brand-dim),
+    1px 1px 0 var(--color-brand-dim);
+}
+
+@media (min-width: 640px) {
+  .hero-heading-outline {
+    -webkit-text-stroke-width: 2px;
+  }
+}
+
 /* Видимый фокус для клавиатуры. Тёмный контур читается на светлом фоне (карточки,
    формы); внутри брендовых тёмных секций (шапка, футер, геро) переопределяем на
    светлый — тёмный контур на тёмном фоне был бы невидим. */

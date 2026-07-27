@@ -17,7 +17,9 @@ test("serves the LCP hero from prebuilt responsive AVIF files", async () => {
   expect(source).toContain("top-0 h-28 bg-gradient-to-b");
   expect(source).toContain("bottom-0 h-44 bg-gradient-to-t");
   expect(source).toContain("object-center");
-  expect(source).toContain("sm:-translate-y-9");
+  expect(source).toContain("sm:translate-y-0");
+  expect(source).toContain("hero-heading-outline");
+  expect(source).toContain("sm:top-[28%]");
   await expect(access(new URL("../public/team-hero-mobile.avif", import.meta.url))).resolves.toBeUndefined();
   await expect(access(new URL("../public/team-hero.avif", import.meta.url))).resolves.toBeUndefined();
   const mobile = await sharp(
