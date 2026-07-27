@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { PropertyCard } from "../PropertyCard";
 import type { SiteContentV1 } from "../../lib/site-content/schema";
@@ -23,14 +22,20 @@ export function HomePageView({
   return (
     <main>
       <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-brand text-on-brand">
-        <Image
-          src="/team-hero.jpeg"
-          alt="Команда агентства недвижимости «Визуал»"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
+        <picture className="absolute inset-0 block">
+          <source
+            media="(max-width: 767px)"
+            srcSet="/team-hero-mobile.avif"
+            type="image/avif"
+          />
+          <source srcSet="/team-hero.avif" type="image/avif" />
+          <img
+            src="/team-hero.jpeg"
+            alt="Команда агентства недвижимости «Визуал»"
+            fetchPriority="high"
+            className="h-full w-full object-cover object-center"
+          />
+        </picture>
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-brand/75 via-brand/30 to-transparent sm:h-52" />
         <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-brand/95 via-brand/55 to-transparent sm:h-64" />
 
