@@ -1,4 +1,6 @@
 import { access, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 import { expect, test } from "vitest";
 import nextConfig from "../next.config";
 
@@ -14,5 +16,9 @@ test("serves the LCP hero from prebuilt responsive AVIF files", async () => {
   expect(source).toContain('preload("/team-hero.avif"');
   await expect(access(new URL("../public/team-hero-mobile.avif", import.meta.url))).resolves.toBeUndefined();
   await expect(access(new URL("../public/team-hero.avif", import.meta.url))).resolves.toBeUndefined();
+  const mobile = await sharp(
+    fileURLToPath(new URL("../public/team-hero-mobile.avif", import.meta.url)),
+  ).metadata();
+  expect(mobile.width).toBeGreaterThanOrEqual(1440);
   expect(nextConfig.images?.formats).toEqual(["image/avif", "image/webp"]);
 });
