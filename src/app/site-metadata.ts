@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { getSiteUrl } from "../lib/site-url";
 
 export const siteMetadata: Metadata = {
-  metadataBase: new URL(process.env.SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "Визуал — агентство недвижимости",
     template: "%s | Визуал",
