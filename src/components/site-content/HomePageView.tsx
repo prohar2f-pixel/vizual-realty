@@ -50,15 +50,15 @@ export function HomePageView({
             className="h-full w-full object-cover object-center"
           />
         </picture>
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-brand/75 via-brand/30 to-transparent sm:h-32" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-brand/95 via-brand/55 to-transparent sm:h-48" />
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand/55 via-brand/15 to-transparent sm:h-28" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-brand/90 via-brand/45 to-transparent sm:h-44" />
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-73px)] w-full max-w-[1600px] flex-col justify-between px-4 py-8 sm:px-8 sm:py-10">
-          <h1 className="hero-heading-outline -translate-y-3 text-center font-display text-4xl font-semibold leading-none tracking-[-0.025em] drop-shadow-lg sm:absolute sm:inset-x-0 sm:top-[28%] sm:translate-y-0 sm:text-6xl lg:text-7xl">
+          <h1 className="hero-heading-outline -translate-y-3 text-center font-display text-4xl font-semibold leading-none tracking-[-0.025em] drop-shadow-lg sm:absolute sm:inset-x-0 sm:top-[28%] sm:translate-y-[10px] sm:text-6xl lg:text-7xl">
             {content.heroHeading}
           </h1>
 
-          <div className="text-center drop-shadow-md">
+          <div className="mt-auto text-center drop-shadow-md">
             <p className="mx-auto text-base font-bold text-on-brand sm:whitespace-nowrap sm:text-sm xl:text-base 2xl:text-lg">
               {content.heroTitle}
               <br />

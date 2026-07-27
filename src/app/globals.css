@@ -35,7 +35,12 @@ body {
 
 @media (min-width: 640px) {
   .hero-heading-outline {
-    -webkit-text-stroke-width: 2px;
+    -webkit-text-stroke-width: 4px;
+    text-shadow:
+      -2px -2px 0 var(--color-brand-dim),
+      2px -2px 0 var(--color-brand-dim),
+      -2px 2px 0 var(--color-brand-dim),
+      2px 2px 0 var(--color-brand-dim);
   }
 }
 
