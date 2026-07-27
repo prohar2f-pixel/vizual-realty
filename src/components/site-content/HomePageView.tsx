@@ -47,14 +47,14 @@ export function HomePageView({
             src="/team-hero.jpeg"
             alt="Команда агентства недвижимости «Визуал»"
             fetchPriority="high"
-            className="h-full w-full object-cover object-center sm:object-top"
+            className="h-full w-full object-cover object-center"
           />
         </picture>
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-brand/75 via-brand/30 to-transparent sm:h-32" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-brand/95 via-brand/55 to-transparent sm:h-48" />
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-73px)] w-full max-w-[1600px] flex-col justify-between px-4 py-8 sm:px-8 sm:py-10">
-          <h1 className="-translate-y-3 text-center font-display text-4xl font-semibold leading-none tracking-[-0.025em] drop-shadow-lg sm:-translate-y-5 sm:text-6xl lg:text-7xl">
+          <h1 className="-translate-y-3 text-center font-display text-4xl font-semibold leading-none tracking-[-0.025em] drop-shadow-lg sm:-translate-y-9 sm:text-6xl lg:text-7xl">
             {content.heroHeading}
           </h1>
 
