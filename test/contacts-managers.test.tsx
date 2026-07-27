@@ -17,11 +17,11 @@ test("contacts page shows Olga and Viktoria instead of a placeholder", async () 
 
   expect(html).toContain("Ольга Кривуца");
   expect(html).toContain("+7 (978) 059-26-69");
-  expect(html).toContain("mailto:olya_malina22@mail.ru");
+  expect(html).toContain("https://t.me/olyadanskaya");
   expect(html).toContain("/managers/olga-krivutsa.webp");
   expect(html).toContain("Тсаренко Виктория");
   expect(html).toContain("+7 (963) 532-80-09");
-  expect(html).toContain("mailto:tsarenko.viktoria2000@mail.ru");
+  expect(html).toContain("https://t.me/Vikel_22");
   expect(html).toContain("/managers/tsarenko-viktoria.webp");
   expect(html).not.toContain("Фамилия Имя");
 });

@@ -52,10 +52,10 @@ test("Olga and Viktoria are seventh and eighth in the team carousel", () => {
   expect(managers).toHaveLength(8);
   expect(managers[6]).toMatchObject({
     name: "Ольга Кривуца",
-    contactUrl: "mailto:olya_malina22@mail.ru",
+    contactUrl: "https://t.me/olyadanskaya",
   });
   expect(managers[7]).toMatchObject({
     name: "Тсаренко Виктория",
-    contactUrl: "mailto:tsarenko.viktoria2000@mail.ru",
+    contactUrl: "https://t.me/Vikel_22",
   });
 });
