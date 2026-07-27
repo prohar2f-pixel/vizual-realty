@@ -121,28 +121,15 @@ umask 077
 read -r -s -p "Новый пароль администратора: " ADMIN_PASSWORD_PLAIN
 printf '\n'
 export ADMIN_PASSWORD_PLAIN
-node <<'NODE'
-const { randomBytes, scryptSync } = require("node:crypto");
-const { existsSync, readFileSync, writeFileSync } = require("node:fs");
-const password = process.env.ADMIN_PASSWORD_PLAIN;
-if (!password) process.exit(1);
-const N = 16384, r = 8, p = 1;
-const salt = randomBytes(32);
-const hash = scryptSync(password, salt, 32, {
-  N, r, p, maxmem: 128 * N * r + 2 * 1024 * 1024,
-});
-const encoded = `scrypt$${N}$${r}$${p}$${salt.toString("base64")}$${hash.toString("base64")}`;
-const path = ".env";
-const current = existsSync(path) ? readFileSync(path, "utf8") : "";
-const line = `ADMIN_PASSWORD_HASH="${encoded}"`;
-const next = /^ADMIN_PASSWORD_HASH=.*$/m.test(current)
-  ? current.replace(/^ADMIN_PASSWORD_HASH=.*$/m, line)
-  : `${current.trimEnd()}${current.trim() ? "\n" : ""}${line}\n`;
-writeFileSync(path, next, { mode: 0o600 });
-NODE
+node scripts/set-admin-password.mjs
 unset ADMIN_PASSWORD_PLAIN
 chmod 600 .env
 ```
+
+Скрипт экранирует разделители `$` в строке `.env`, чтобы загрузчик окружения
+Next.js не принял части scrypt-хеша за ссылки на другие переменные. В памяти
+приложения экранирование снимается автоматически, и проверка получает исходный
+хеш.
 
 `ADMIN_SESSION_SECRET` создаётся отдельно криптографическим генератором и также
 записывается прямо в `.env`, без вывода в терминал:
