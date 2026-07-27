@@ -198,10 +198,9 @@ test("renders all newly versioned About and Contacts copy from the publication",
   expect(contactsHtml).toContain("Опубликованное вступление контактов");
   expect(contactsHtml).toContain("Опубликованные часы");
   expect(contactsHtml).toContain("По предварительной записи");
-  for (const html of [contactsHtml, objectHtml]) {
-    expect(html).toContain("Опубликованная форма");
-  }
-  expect(contactsHtml).toContain("Опубликованная подпись имени");
+  expect(contactsHtml).not.toContain("Опубликованная форма");
+  expect(contactsHtml).not.toContain("Опубликованная подпись имени");
+  expect(objectHtml).toContain("Опубликованная форма");
   expect(objectHtml).toContain("Опубликованное пояснение после отправки");
 });
 

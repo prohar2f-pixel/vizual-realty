@@ -1,5 +1,4 @@
 import type { SiteContentV1, TeamMemberV1 } from "../../lib/site-content/schema";
-import { LeadForm } from "../LeadForm";
 import { memberContact, memberImageUrl, phoneHref } from "./member-view";
 
 function ManagerAvatar({ member }: { member: TeamMemberV1 }) {
@@ -110,9 +109,6 @@ export function ContactsPageView({ content, members, mapSearchAddress }: {
           <iframe src={mapUrl} title="Карта проезда к офису агентства «Визуал»" className="h-full w-full border-0" loading="lazy" allowFullScreen />
         </section>
       </div>
-      <section className="mt-6 max-w-xl">
-        <LeadForm copy={content.form} />
-      </section>
     </main>
   );
 }
