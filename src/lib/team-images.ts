@@ -215,7 +215,7 @@ export async function transformTeamImage(bytes: Uint8Array) {
         width: side,
         height: side,
         fit: "cover",
-        position: sharp.strategy.attention,
+        position: "north",
       })
       .webp()
       .toBuffer({ resolveWithObject: true });

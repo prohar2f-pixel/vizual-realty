@@ -183,6 +183,44 @@ describe("team image storage", () => {
     expect(metadata.orientation).toBeUndefined();
   });
 
+  test("crops portrait avatars from the top so a face is retained", async () => {
+    const uploadDirectory = await makeTempDirectory();
+    const storage = createTeamImageStorage({ uploadDirectory });
+    const input = await sharp({
+      create: {
+        width: 80,
+        height: 160,
+        channels: 3,
+        background: "#ef4444",
+      },
+    })
+      .composite([
+        {
+          input: await sharp({
+            create: {
+              width: 80,
+              height: 80,
+              channels: 3,
+              background: "#2563eb",
+            },
+          }).png().toBuffer(),
+          top: 80,
+          left: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    const { id } = await storage.storeTeamImage(input, "image/png");
+    const { data, info } = await sharp(
+      await readFile(join(uploadDirectory, `${id}.webp`)),
+    ).raw().toBuffer({ resolveWithObject: true });
+
+    expect(info).toMatchObject({ width: 80, height: 80, channels: 3 });
+    expect(data[0]).toBeGreaterThan(200);
+    expect(data[2]).toBeLessThan(100);
+  });
+
   test.each([
     ["SVG", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>')],
     ["text", Buffer.from("not an image")],
