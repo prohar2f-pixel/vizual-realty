@@ -148,7 +148,7 @@ describe("team image storage", () => {
       });
       expect(files).toEqual([`${stored.id}.webp`]);
       expect(files.join(" ")).not.toContain("portrait");
-      expect(metadata).toMatchObject({ format: "webp", width: 48, height: 32 });
+      expect(metadata).toMatchObject({ format: "webp", width: 32, height: 32 });
       expect(metadata.exif).toBeUndefined();
       expect(metadata.xmp).toBeUndefined();
       expect(safelyRead).toEqual(output);
@@ -177,8 +177,8 @@ describe("team image storage", () => {
 
     expect(metadata).toMatchObject({
       format: "webp",
-      width: 1600,
-      height: 960,
+      width: 1200,
+      height: 1200,
     });
     expect(metadata.orientation).toBeUndefined();
   });

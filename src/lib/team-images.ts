@@ -165,7 +165,7 @@ function hasStrictEnvelope(
   return false;
 }
 
-async function transformTeamImage(bytes: Uint8Array) {
+export async function transformTeamImage(bytes: Uint8Array) {
   if (bytes.byteLength === 0 || bytes.byteLength > TEAM_IMAGE_MAX_BYTES) {
     throw new TeamImageValidationError();
   }
@@ -190,25 +190,40 @@ async function transformTeamImage(bytes: Uint8Array) {
       throw new TeamImageValidationError();
     }
 
-    const result = await sharp(input, {
+    const normalized = await sharp(input, {
       failOn: "warning",
       limitInputPixels: TEAM_IMAGE_MAX_INPUT_PIXELS,
       limitInputChannels: 4,
       pages: 1,
     })
       .rotate()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const side = Math.min(
+      TEAM_IMAGE_MAX_DIMENSION,
+      normalized.info.width,
+      normalized.info.height,
+    );
+    const result = await sharp(normalized.data, {
+      raw: {
+        width: normalized.info.width,
+        height: normalized.info.height,
+        channels: normalized.info.channels,
+      },
+    })
       .resize({
-        width: TEAM_IMAGE_MAX_DIMENSION,
-        height: TEAM_IMAGE_MAX_DIMENSION,
-        fit: "inside",
-        withoutEnlargement: true,
+        width: side,
+        height: side,
+        fit: "cover",
+        position: sharp.strategy.attention,
       })
       .webp()
       .toBuffer({ resolveWithObject: true });
     if (
       result.info.format !== "webp" ||
       result.info.width > TEAM_IMAGE_MAX_DIMENSION ||
-      result.info.height > TEAM_IMAGE_MAX_DIMENSION
+      result.info.height > TEAM_IMAGE_MAX_DIMENSION ||
+      result.info.width !== result.info.height
     ) {
       throw new TeamImageValidationError();
     }
