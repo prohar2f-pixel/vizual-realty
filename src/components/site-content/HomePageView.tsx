@@ -47,7 +47,7 @@ export function HomePageView({
             src="/team-hero.jpeg"
             alt="Команда агентства недвижимости «Визуал»"
             fetchPriority="high"
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full object-cover object-center sm:object-top"
           />
         </picture>
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-brand/75 via-brand/30 to-transparent sm:h-32" />
