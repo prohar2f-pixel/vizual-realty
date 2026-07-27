@@ -90,6 +90,7 @@ test("renders named accessible employee controls without physical deletion", () 
   for (const label of [
     "Имя",
     "Должность",
+    "Описание / опыт и достижения",
     "Телефон",
     "E-mail",
     "Telegram",
@@ -98,6 +99,7 @@ test("renders named accessible employee controls without physical deletion", () 
   ]) {
     expect(html).toContain(label);
   }
+  expect(html).toContain('name="team.members[0].description"');
   expect(html).toContain('alt="Аянот Елена"');
   expect(html).toContain(
     'aria-label="Переместить сотрудника 1: Аянот Елена выше"',

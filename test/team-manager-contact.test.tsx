@@ -46,6 +46,32 @@ test("keeps Telegram actions external", () => {
   expect(html).toContain('rel="noreferrer"');
 });
 
+test("shows an employee description only when it is provided", () => {
+  const manager: TeamManager = {
+    id: "olga-krivutsa",
+    name: "Ольга Кривуца",
+    contactExternal: false,
+    description: "Специалист по сопровождению сделок с жилой недвижимостью.",
+  };
+
+  const html = renderToStaticMarkup(<ManagerCard manager={manager} />);
+
+  expect(html).toContain(manager.description);
+  expect(html).not.toContain("Подробная информация об опыте");
+});
+
+test("does not show a legacy placeholder when an employee description is empty", () => {
+  const manager: TeamManager = {
+    id: "olga-krivutsa",
+    name: "Ольга Кривуца",
+    contactExternal: false,
+  };
+
+  const html = renderToStaticMarkup(<ManagerCard manager={manager} />);
+
+  expect(html).not.toContain("Подробная информация об опыте");
+});
+
 test("Olga and Viktoria are seventh and eighth in the team carousel", () => {
   const managers = toTeamManagers(DEFAULT_SITE_CONTENT.team);
 

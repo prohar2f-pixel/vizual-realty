@@ -2,6 +2,7 @@ export type TeamMemberV1 = {
   id: string;
   name: string;
   role?: string;
+  description?: string;
   phone?: string;
   email?: string;
   telegram?: string;
@@ -386,9 +387,9 @@ function parseMember(value: unknown, index: number, issues: ContentIssue[]): Tea
   const record = exactObject(
     value,
     path,
-    ["id", "name", "role", "phone", "email", "telegram", "imageId", "topnlabAgentId", "isVisible"],
+    ["id", "name", "role", "description", "phone", "email", "telegram", "imageId", "topnlabAgentId", "isVisible"],
     issues,
-    ["role", "phone", "email", "telegram", "imageId", "topnlabAgentId"],
+    ["role", "description", "phone", "email", "telegram", "imageId", "topnlabAgentId"],
   );
   const phone = optionalPhone(record?.phone, `${path}.phone`, issues);
   const email = optionalEmail(record?.email, `${path}.email`, issues);
@@ -403,6 +404,9 @@ function parseMember(value: unknown, index: number, issues: ContentIssue[]): Tea
     id: shortId(record?.id, `${path}.id`, issues),
     name: text(record?.name, `${path}.name`, SHORT_TEXT_LIMIT, issues),
     ...(record?.role === undefined ? {} : { role: optionalText(record.role, `${path}.role`, SHORT_TEXT_LIMIT, issues) }),
+    ...(record?.description === undefined
+      ? {}
+      : { description: optionalText(record.description, `${path}.description`, PARAGRAPH_LIMIT, issues) }),
     ...(phone ? { phone } : {}),
     ...(email ? { email } : {}),
     ...(telegram ? { telegram } : {}),

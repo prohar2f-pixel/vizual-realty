@@ -18,7 +18,7 @@ export function toTeamManagers(
         contactLabel: contact?.label,
         contactExternal: contact?.external ?? false,
         photoUrl: memberImageUrl(member.imageId, "card"),
-        description: member.role,
+        description: member.description,
       };
     });
 }

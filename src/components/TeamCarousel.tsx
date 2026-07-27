@@ -42,9 +42,11 @@ export function ManagerCard({ manager }: { manager: TeamManager }) {
           <a href={manager.phoneHref} className="mt-2 block font-semibold text-text transition hover:text-brand">{manager.phone}</a>
         ) : null}
 
-        <div className="mt-5 rounded-xl bg-brand/5 p-4 text-sm leading-6 text-text/75">
-          {manager.description ?? "Подробная информация об опыте и достижениях менеджера будет добавлена после согласования."}
-        </div>
+        {manager.description ? (
+          <div className="mt-5 rounded-xl bg-brand/5 p-4 text-sm leading-6 text-text/75">
+            {manager.description}
+          </div>
+        ) : null}
 
         {manager.contactUrl && manager.contactLabel ? (
           <a href={manager.contactUrl} {...externalProps} className="mt-5 inline-flex w-full justify-center rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-on-brand transition hover:bg-brand-dim">{manager.contactLabel}</a>

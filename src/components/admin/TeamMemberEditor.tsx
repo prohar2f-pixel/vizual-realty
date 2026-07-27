@@ -297,6 +297,20 @@ export function TeamMemberEditor({
             help="Необязательно, до 120 символов."
             onChange={(value) => onChange("role", value)}
           />
+          <div className="sm:col-span-2">
+            <TextField
+              label="Описание / опыт и достижения"
+              path={`${basePath}.description`}
+              value={member.description ?? ""}
+              maxLength={1200}
+              multiline
+              rows={4}
+              disabled={locked}
+              issue={firstIssue(issues, `${basePath}.description`)}
+              help="Необязательно, до 1200 символов."
+              onChange={(value) => onChange("description", value)}
+            />
+          </div>
           <TextField
             label="Телефон"
             path={`${basePath}.phone`}

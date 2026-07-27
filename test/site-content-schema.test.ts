@@ -213,6 +213,22 @@ test("allows a hidden team member without contact details", () => {
   });
 });
 
+test("accepts and normalizes an optional team member description", () => {
+  const content = copyDefaultContent();
+  content.team.members[0].description = "  Опыт работы с жилой недвижимостью.  ";
+
+  expect(parseSiteContent(content).team.members[0].description).toBe(
+    "Опыт работы с жилой недвижимостью.",
+  );
+});
+
+test("limits a team member description to 1200 characters", () => {
+  const content = copyDefaultContent();
+  content.team.members[0].description = "а".repeat(1201);
+
+  expect(() => parseSiteContent(content)).toThrow(SiteContentValidationError);
+});
+
 test("normalizes whitespace and contact values", () => {
   const content = copyDefaultContent();
   content.home.heroHeading = "  Недвижимость\n  в Донецке  ";
