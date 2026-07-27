@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { preload } from "react-dom";
 import { PropertyCard } from "../PropertyCard";
 import type { SiteContentV1 } from "../../lib/site-content/schema";
 
@@ -19,6 +20,19 @@ export function HomePageView({
   content: SiteContentV1["home"];
   featured: FeaturedPropertyView[];
 }) {
+  preload("/team-hero-mobile.avif", {
+    as: "image",
+    type: "image/avif",
+    media: "(max-width: 767px)",
+    fetchPriority: "high",
+  });
+  preload("/team-hero.avif", {
+    as: "image",
+    type: "image/avif",
+    media: "(min-width: 768px)",
+    fetchPriority: "high",
+  });
+
   return (
     <main>
       <section className="relative min-h-[calc(100svh-73px)] overflow-hidden bg-brand text-on-brand">
