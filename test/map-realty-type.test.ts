@@ -55,15 +55,18 @@ test("maps Topnlab photo objects to the best available image URLs", () => {
   ]);
 });
 
-test("normalizes Topnlab room codes used by real entities", () => {
+test("normalizes Topnlab room codes without counting the kitchen", () => {
   const mapped = mapTopnlabEntity({
     ...entity,
     title: undefined,
     rooms: 40,
   });
 
-  expect(mapped.rooms).toBe(4);
-  expect(mapped.title).toContain("4-комн. квартира");
+  expect(mapped.rooms).toBe(3);
+  expect(mapped.title).toContain("3-комн. квартира");
+
+  expect(mapTopnlabEntity({ ...entity, rooms: 30 }).rooms).toBe(2);
+  expect(mapTopnlabEntity({ ...entity, rooms: 2 }).rooms).toBe(2);
 });
 
 test("maps the floor and building floor count from Topnlab", () => {

@@ -67,7 +67,7 @@ function buildPropertyTitle(
 function normalizeRooms(value: unknown): number | undefined {
   const rooms = Number(value);
   if (!Number.isFinite(rooms)) return undefined;
-  return rooms >= 10 && rooms % 10 === 0 ? rooms / 10 : rooms;
+  return rooms >= 20 && rooms % 10 === 0 ? rooms / 10 - 1 : rooms;
 }
 
 function normalizePositiveInteger(value: unknown): number | undefined {
