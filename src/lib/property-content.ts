@@ -141,6 +141,19 @@ export function normalizeStoredPropertyDistrict(
     : undefined;
 }
 
+/** Removes a home's number from an address intended for the public website. */
+export function hidePropertyHouseNumber(value: string): string {
+  const withoutExplicitHouse = value.replace(
+    /,\s*(?:д(?:ом)?\.?|№)\s*\d[\p{L}\p{N}./-]*(?:\s*,\s*(?:корп(?:ус)?|к)\.?\s*\d[\p{L}\p{N}./-]*)?/giu,
+    "",
+  );
+
+  return withoutExplicitHouse.replace(
+    /((?:ул(?:ица)?|пр(?:осп(?:ект)?)?\.?|пер(?:еулок)?|бул(?:ьвар)?|наб(?:ережная)?|ш(?:оссе)?|пл(?:ощадь)?)\s+[^,]+),\s*\d[\p{L}\p{N}./-]*(?:\s*,\s*(?:корп(?:ус)?|к)\.?\s*\d[\p{L}\p{N}./-]*)?$/iu,
+    "$1",
+  );
+}
+
 export function formatTopnlabAddress(
   entity: Record<string, unknown>,
 ): string | undefined {

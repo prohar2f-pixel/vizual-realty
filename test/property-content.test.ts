@@ -3,6 +3,7 @@ import {
   extractTopnlabCity,
   extractTopnlabDistrict,
   formatTopnlabAddress,
+  hidePropertyHouseNumber,
   normalizePropertyDescription,
   normalizeStoredPropertyDistrict,
 } from "../src/lib/property-content";
@@ -130,6 +131,23 @@ describe("formatTopnlabAddress", () => {
         full_address: "\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7",
       }),
     ).toBe("\u0414\u041d\u0420, \u0414\u043e\u043d\u0435\u0446\u043a, \u0443\u043b. \u041c\u0438\u0440\u0430, \u0434. 7");
+  });
+});
+
+describe("hidePropertyHouseNumber", () => {
+  test("removes explicit and trailing house numbers while keeping the street", () => {
+    expect(
+      hidePropertyHouseNumber(
+        "г. Донецк, Киевский р-н, ул. Артёма, д. 15/2, корп. 3",
+      ),
+    ).toBe("г. Донецк, Киевский р-н, ул. Артёма");
+    expect(hidePropertyHouseNumber("Квартира, пр. Ильича, 42")).toBe(
+      "Квартира, пр. Ильича",
+    );
+  });
+
+  test("does not remove numbers that are part of a street name", () => {
+    expect(hidePropertyHouseNumber("ул. 50 лет СССР")).toBe("ул. 50 лет СССР");
   });
 });
 

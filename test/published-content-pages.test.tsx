@@ -23,6 +23,7 @@ vi.mock("../src/lib/featured", () => ({ getFeaturedProperties }));
 vi.mock("../src/components/PropertyCard", () => ({ PropertyCard: () => null }));
 vi.mock("@/lib/format", () => ({ formatPrice: (price: number) => `${price} ₽` }));
 vi.mock("@/lib/property-content", () => ({
+  hidePropertyHouseNumber: (value: string) => value,
   normalizePropertyDescription: (value: string | null) => value,
   normalizeStoredPropertyDistrict: (value: string | null) => value,
 }));

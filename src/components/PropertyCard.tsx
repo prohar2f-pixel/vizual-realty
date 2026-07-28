@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import type { ResolvedManager } from "@/lib/manager-profiles";
-import { normalizeStoredPropertyDistrict } from "@/lib/property-content";
+import {
+  hidePropertyHouseNumber,
+  normalizeStoredPropertyDistrict,
+} from "@/lib/property-content";
 
 type Props = {
   id: string;
@@ -16,6 +19,7 @@ type Props = {
 
 export function PropertyCard({ id, title, price, rooms, area, district, photo, manager }: Props) {
   const displayedDistrict = normalizeStoredPropertyDistrict(district);
+  const displayedTitle = hidePropertyHouseNumber(title);
 
   return (
     <Link
@@ -27,7 +31,7 @@ export function PropertyCard({ id, title, price, rooms, area, district, photo, m
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={photo}
-            alt={title}
+            alt={displayedTitle}
             loading="lazy"
             decoding="async"
             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
@@ -46,7 +50,7 @@ export function PropertyCard({ id, title, price, rooms, area, district, photo, m
       </div>
       <div className="p-4">
         <div className="font-display text-xl font-bold text-accent-text">{formatPrice(price)}</div>
-        <div className="mt-1 line-clamp-1 font-display font-medium text-text">{title}</div>
+        <div className="mt-1 line-clamp-1 font-display font-medium text-text">{displayedTitle}</div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-500">
           {rooms != null && <span>{rooms} комн.</span>}
           {area != null && <span>{area} м²</span>}

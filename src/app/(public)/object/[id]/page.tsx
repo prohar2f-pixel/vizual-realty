@@ -8,6 +8,7 @@ import { LeadForm } from "@/components/LeadForm";
 import { PropertyDescription } from "@/components/PropertyDescription";
 import { resolveManager } from "@/lib/manager-profiles";
 import {
+  hidePropertyHouseNumber,
   normalizePropertyDescription,
   normalizeStoredPropertyDistrict,
 } from "@/lib/property-content";
@@ -27,7 +28,7 @@ export async function generateMetadata({
   const p = await getProperty(id);
   if (!p) return { title: "Объект не найден" };
   return {
-    title: `${p.title} — ${formatPrice(p.price)}`,
+    title: `${hidePropertyHouseNumber(p.title)} — ${formatPrice(p.price)}`,
     description: normalizePropertyDescription(p.description),
   };
 }
@@ -42,6 +43,8 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
   const manager = resolveManager(p.agent, content.team.members);
   const description = normalizePropertyDescription(p.description);
   const district = normalizeStoredPropertyDistrict(p.district);
+  const title = hidePropertyHouseNumber(p.title);
+  const address = p.address ? hidePropertyHouseNumber(p.address) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -51,7 +54,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
         </svg>
         к каталогу
       </a>
-      <h1 className="mt-3 font-display text-3xl font-bold text-brand">{p.title}</h1>
+      <h1 className="mt-3 font-display text-3xl font-bold text-brand">{title}</h1>
       <div className="mt-1 font-display text-2xl font-bold text-brand">{formatPrice(p.price)}</div>
 
       {p.photos.length > 0 && (
@@ -61,7 +64,7 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
             <img
               key={i}
               src={src}
-              alt={`${p.title} — фото ${i + 1}`}
+              alt={`${title} — фото ${i + 1}`}
               className="aspect-[4/3] w-full rounded-lg object-cover"
             />
           ))}
@@ -89,10 +92,10 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
                 <dd className="font-medium">{district}</dd>
               </div>
             )}
-            {p.address && (
+            {address && (
               <div>
                 <dt className="text-stone-500">Адрес</dt>
-                <dd className="font-medium">{p.address}</dd>
+                <dd className="font-medium">{address}</dd>
               </div>
             )}
           </dl>
