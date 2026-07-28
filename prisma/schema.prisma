@@ -29,6 +29,8 @@ model Property {
   price       Int
   rooms       Int?
   area        Float?
+  floor       Int?
+  floors      Int?
   city        String?
   district    String?
   address     String?

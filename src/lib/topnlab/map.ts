@@ -17,6 +17,8 @@ export type MappedProperty = {
   price: number;
   rooms?: number;
   area?: number;
+  floor?: number;
+  floors?: number;
   city?: string;
   district?: string;
   address?: string;
@@ -66,6 +68,11 @@ function normalizeRooms(value: unknown): number | undefined {
   const rooms = Number(value);
   if (!Number.isFinite(rooms)) return undefined;
   return rooms >= 10 && rooms % 10 === 0 ? rooms / 10 : rooms;
+}
+
+function normalizePositiveInteger(value: unknown): number | undefined {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : undefined;
 }
 
 function mapPhotoUrls(photos: unknown): string[] {
@@ -128,6 +135,8 @@ export function mapTopnlabEntity(e: any): MappedProperty {
     price: Number(e.price),
     rooms,
     area: e.area ?? undefined,
+    floor: normalizePositiveInteger(e.floor),
+    floors: normalizePositiveInteger(e.floors),
     city: extractTopnlabCity(e),
     district: extractTopnlabDistrict(e),
     address,

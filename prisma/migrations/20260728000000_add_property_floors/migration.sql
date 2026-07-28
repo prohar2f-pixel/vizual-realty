@@ -1,0 +1,3 @@
+ALTER TABLE "Property"
+  ADD COLUMN "floor" INTEGER,
+  ADD COLUMN "floors" INTEGER;

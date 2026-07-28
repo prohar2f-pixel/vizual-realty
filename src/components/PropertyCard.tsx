@@ -12,12 +12,14 @@ type Props = {
   price: number;
   rooms: number | null;
   area: number | null;
+  floor?: number | null;
+  floors?: number | null;
   district: string | null;
   photo: string | null;
   manager?: ResolvedManager;
 };
 
-export function PropertyCard({ id, title, price, rooms, area, district, photo, manager }: Props) {
+export function PropertyCard({ id, title, price, rooms, area, floor, floors, district, photo, manager }: Props) {
   const displayedDistrict = normalizeStoredPropertyDistrict(district);
   const displayedTitle = hidePropertyHouseNumber(title);
 
@@ -54,6 +56,8 @@ export function PropertyCard({ id, title, price, rooms, area, district, photo, m
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-500">
           {rooms != null && <span>{rooms} комн.</span>}
           {area != null && <span>{area} м²</span>}
+          {floor != null && floors != null && <span>{floor}/{floors} этаж</span>}
+          {floor != null && floors == null && <span>{floor} этаж</span>}
           {displayedDistrict && <span>{displayedDistrict}</span>}
         </div>
         {manager && (

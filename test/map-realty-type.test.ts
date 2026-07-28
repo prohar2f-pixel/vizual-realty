@@ -66,6 +66,17 @@ test("normalizes Topnlab room codes used by real entities", () => {
   expect(mapped.title).toContain("4-комн. квартира");
 });
 
+test("maps the floor and building floor count from Topnlab", () => {
+  const mapped = mapTopnlabEntity({
+    ...entity,
+    floor: 2,
+    floors: 9,
+  });
+
+  expect(mapped.floor).toBe(2);
+  expect(mapped.floors).toBe(9);
+});
+
 test("builds a readable title when Topnlab omits title", () => {
   const { title: _title, object_type: _objectType, ...realEntity } = entity;
 

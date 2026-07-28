@@ -9,6 +9,8 @@ export type PropertyCardData = {
   price: number;
   rooms: number | null;
   area: number | null;
+  floor?: number | null;
+  floors?: number | null;
   city: string | null;
   district: string | null;
   address: string | null;
@@ -79,6 +81,8 @@ const cardSelection = {
   price: true,
   rooms: true,
   area: true,
+  floor: true,
+  floors: true,
   city: true,
   district: true,
   address: true,
@@ -107,6 +111,8 @@ function toCard(
     price: property.price,
     rooms: property.rooms,
     area: property.area,
+    floor: property.floor,
+    floors: property.floors,
     city: property.city,
     district: property.district,
     address: property.address,
@@ -180,6 +186,8 @@ function toPublicCards(
     price: item.price,
     rooms: item.rooms,
     area: item.area,
+    floor: item.floor,
+    floors: item.floors,
     city: item.city,
     district: item.district,
     address: item.address,

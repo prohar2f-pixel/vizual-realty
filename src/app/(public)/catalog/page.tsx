@@ -72,6 +72,8 @@ export default async function CatalogPage({
               price={p.price}
               rooms={p.rooms}
               area={p.area}
+              floor={p.floor}
+              floors={p.floors}
               district={p.district}
               photo={p.photos[0] ?? null}
               manager={resolveManager(p.agent, content.team.members)}

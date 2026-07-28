@@ -86,6 +86,21 @@ export default async function ObjectPage({ params }: { params: Promise<{ id: str
                 <dd className="font-medium">{p.area} м²</dd>
               </div>
             )}
+            {p.floor != null && (
+              <div>
+                <dt className="text-stone-500">Этаж</dt>
+                <dd className="font-medium">
+                  {p.floor}
+                  {p.floors != null ? ` из ${p.floors}` : ""}
+                </dd>
+              </div>
+            )}
+            {p.floor == null && p.floors != null && (
+              <div>
+                <dt className="text-stone-500">Этажность</dt>
+                <dd className="font-medium">{p.floors}</dd>
+              </div>
+            )}
             {district && (
               <div>
                 <dt className="text-stone-500">Район</dt>
