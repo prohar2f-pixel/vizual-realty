@@ -23,6 +23,17 @@ export function CatalogFilters({ cities, districts, current }: Props) {
       className="mb-6 flex flex-col gap-3 rounded-xl border border-stone-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4"
     >
       <label className="flex flex-col text-sm">
+        <span className="mb-1 text-stone-600">Артикул</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          name="article"
+          defaultValue={current.article ?? ""}
+          placeholder="Например, 139373401"
+          className="rounded-md border border-stone-300 px-3 py-2"
+        />
+      </label>
+      <label className="flex flex-col text-sm">
         <span className="mb-1 text-stone-600">Тип объекта</span>
         <select
           name="objectType"

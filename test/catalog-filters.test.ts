@@ -48,4 +48,15 @@ describe("buildCatalogWhere", () => {
     expect(buildCatalogWhere({ rooms: "studio" })).toEqual({ isFeed: true });
     expect(buildCatalogWhere({ rooms: "0" })).toEqual({ isFeed: true });
   });
+
+  test("finds a property by its Topnlab article or internal ID", () => {
+    expect(buildCatalogWhere({ article: "139373401" })).toEqual({
+      isFeed: true,
+      OR: [{ id: "139373401" }, { shortId: 139373401 }],
+    });
+  });
+
+  test("ignores a non-numeric article", () => {
+    expect(buildCatalogWhere({ article: "дом 15" })).toEqual({ isFeed: true });
+  });
 });
