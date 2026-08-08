@@ -53,7 +53,10 @@ if [[ ! -s "$temporary_directory/database.dump" ]]; then
   exit 1
 fi
 
-sha256sum "$temporary_directory/database.dump" > "$temporary_directory/database.dump.sha256"
+(
+  cd "$temporary_directory"
+  sha256sum database.dump > database.dump.sha256
+)
 mv "$temporary_directory" "$final_directory"
 trap - EXIT
 
