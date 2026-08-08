@@ -3,6 +3,7 @@ import "../globals.css";
 import { DocumentLayout } from "../../components/DocumentLayout";
 import { Footer } from "../../components/Footer";
 import { Header } from "../../components/Header";
+import { YandexMetrika } from "../../components/YandexMetrika";
 import { getPublishedContent } from "../../lib/site-content/published";
 import { siteMetadata } from "../site-metadata";
 
@@ -17,6 +18,7 @@ export default async function PublicLayout({
   const content = await getPublishedContent();
   return (
     <DocumentLayout>
+      <YandexMetrika />
       <Header navigation={content.navigation} />
       <div className="flex-1">{children}</div>
       <Footer content={content.footer} navigation={content.navigation} />
