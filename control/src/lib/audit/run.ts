@@ -2,7 +2,7 @@ import { Pool } from "pg";
 import type { Prisma } from "../../generated/prisma/client";
 
 import { readControlConfig } from "../config";
-import { db } from "../db";
+import { getDb } from "../db";
 import { readTopnlabApi } from "../sources/topnlab-api";
 import { readSitePublishedIds } from "../sources/site-db";
 import { readXmlFeed } from "../sources/xml-feed";
@@ -36,6 +36,7 @@ function snapshotData(source: SourceName, attempt: SourceAttempt, startedAt: Dat
 }
 
 export async function runAudit(trigger: "manual" | "scheduled") {
+  const db = getDb();
   const config = readControlConfig();
   const startedAt = new Date();
   const sitePool = new Pool({ connectionString: config.siteReadonlyDatabaseUrl });

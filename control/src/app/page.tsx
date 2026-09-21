@@ -3,12 +3,17 @@ export const dynamic = "force-dynamic";
 const sourceLabels: Record<string, string> = { xml: "XML-фид", api: "API Topnlab", site: "Каталог сайта" };
 
 export default async function Dashboard() {
-  const { db } = await import("../lib/db");
+  const { requireSession } = await import("../lib/security/request");
+  await requireSession();
+  const { RunButton } = await import("./RunButton");
+  const { getDb } = await import("../lib/db");
+  const db = getDb();
   const run = await db.auditRun.findFirst({ orderBy: { startedAt: "desc" }, include: { snapshots: true } });
   const issues = await db.auditIssue.findMany({ where: { status: { in: ["open", "stale", "review"] } }, orderBy: { lastSeenAt: "desc" }, take: 100 });
   return <main style={{ maxWidth: 1180, margin: "40px auto", fontFamily: "Arial, sans-serif", padding: 24 }}>
     <h1>Контроль синхронизации объектов</h1>
     <p>Тестовый read-only контур. Он ничего не изменяет в Topnlab и на сайте.</p>
+    <RunButton />
     {!run ? <p>Проверки ещё не запускались.</p> : <>
       <p>Последний запуск: {run.status} · {run.startedAt.toLocaleString("ru-RU")} · версия правил {run.ruleVersion}</p>
       <section style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>

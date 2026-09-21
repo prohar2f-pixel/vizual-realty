@@ -2,6 +2,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { readControlConfig } from "./config";
 
-const adapter = new PrismaPg({ connectionString: readControlConfig().controlDatabaseUrl });
+let client: PrismaClient | undefined;
 
-export const db = new PrismaClient({ adapter });
+export function getDb() {
+  if (!client) {
+    const adapter = new PrismaPg({ connectionString: readControlConfig().controlDatabaseUrl });
+    client = new PrismaClient({ adapter });
+  }
+  return client;
+}
