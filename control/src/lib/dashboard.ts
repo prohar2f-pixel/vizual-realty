@@ -4,6 +4,14 @@ export type DashboardSnapshot = {
   recordCount: number | null;
 };
 
+export function formatMoscowDate(value: Date | string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
+    dateStyle: "short",
+    timeStyle: "medium",
+  }).format(new Date(value));
+}
+
 const issueDescriptions = {
   "api-not-in-xml": { title: "Есть в API Topnlab, но нет в XML-фиде", severity: "warning" },
   "xml-not-in-api": { title: "Есть в XML-фиде, но нет в API Topnlab", severity: "warning" },

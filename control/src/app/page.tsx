@@ -9,7 +9,7 @@ export default async function Dashboard() {
   const { RunButton } = await import("./RunButton");
   const { IssuesTable } = await import("./IssuesTable");
   const { getDb } = await import("../lib/db");
-  const { summarizeIssues } = await import("../lib/dashboard");
+  const { formatMoscowDate, summarizeIssues } = await import("../lib/dashboard");
   const db = getDb();
   const run = await db.auditRun.findFirst({ orderBy: { startedAt: "desc" }, include: { snapshots: true } });
   const issues = await db.auditIssue.findMany({ where: { status: { in: ["open", "stale", "review"] } }, orderBy: { lastSeenAt: "desc" }, include: { observations: { orderBy: { auditRun: { startedAt: "desc" } }, take: 1 } } });
@@ -21,13 +21,13 @@ export default async function Dashboard() {
     <p style={{ maxWidth: 680, color: "#526158" }}>Панель только сравнивает источники. Она не вносит изменений ни в Topnlab, ни в каталог сайта.</p>
     <RunButton />
     {!run ? <p>Проверки ещё не запускались.</p> : <>
-      <p><strong>Последний запуск:</strong> {run.status === "success" ? "успешно" : run.status === "partial" ? "частично" : "с ошибкой"} · {run.startedAt.toLocaleString("ru-RU")} · правила {run.ruleVersion}</p>
+      <p><strong>Последний запуск:</strong> {run.status === "success" ? "успешно" : run.status === "partial" ? "частично" : "с ошибкой"} · {formatMoscowDate(run.startedAt)} · правила {run.ruleVersion}</p>
       <section aria-label="Сводка источников" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16 }}>
         {snapshots.map((snapshot) => <article key={snapshot.id} style={{ border: "1px solid #d9e4dc", background: "#f8fbf8", borderRadius: 12, padding: 16 }}>
           <strong>{sourceLabels[snapshot.source] ?? snapshot.source}</strong><br />
           Статус: {snapshot.status === "success" ? "получен" : "ошибка"}<br />
           Объектов: {snapshot.recordCount ?? "—"}<br />
-          Снимок: {snapshot.readFinishedAt.toLocaleString("ru-RU")}<br />
+          Снимок: {formatMoscowDate(snapshot.readFinishedAt)}<br />
           {snapshot.errorCode ? <>Код ошибки: {snapshot.errorCode}</> : null}
         </article>)}
       </section>

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { describeIssue, filterIssues, summarizeIssues, summarizeSnapshots } from "../src/lib/dashboard";
+import { describeIssue, filterIssues, formatMoscowDate, summarizeIssues, summarizeSnapshots } from "../src/lib/dashboard";
 
 test("describes an API-only object in clear Russian", () => {
   expect(describeIssue("api-not-in-xml")).toEqual({
@@ -32,4 +32,8 @@ test("counts actual directional differences instead of subtracting source totals
     { canonicalId: "2", ruleCode: "api-not-in-xml" },
     { canonicalId: "3", ruleCode: "xml-not-in-api" },
   ])).toEqual({ apiOnly: 2, xmlOnly: 1, siteOnly: 0, xmlOnlySite: 0 });
+});
+
+test("formats audit timestamps in Moscow time on both server and browser", () => {
+  expect(formatMoscowDate(new Date("2026-09-21T21:07:01.000Z"))).toBe("22.09.2026, 00:07:01");
 });
