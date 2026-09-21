@@ -12,6 +12,7 @@ const validEnvironment = {
   CONTROL_ADMIN_USERNAME: "owner",
   CONTROL_ADMIN_PASSWORD_HASH: "scrypt$16384$8$1$salt$hash",
   CONTROL_SESSION_SECRET: "12345678901234567890123456789012",
+  CONTROL_SCHEDULE_SECRET: "test-schedule-secret",
 };
 
 test("rejects a missing control database URL", () => {

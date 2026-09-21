@@ -10,6 +10,7 @@ export type ControlConfig = {
   adminUsername: string;
   adminPasswordHash: string;
   sessionSecret: string;
+  scheduleSecret: string;
   allowedIps: string[];
 };
 
@@ -71,6 +72,7 @@ export function readControlConfig(environment: Environment = process.env): Contr
     adminUsername: required(environment, "CONTROL_ADMIN_USERNAME"),
     adminPasswordHash: required(environment, "CONTROL_ADMIN_PASSWORD_HASH"),
     sessionSecret,
+    scheduleSecret: required(environment, "CONTROL_SCHEDULE_SECRET"),
     allowedIps: readAllowedIps(environment),
   };
 }
