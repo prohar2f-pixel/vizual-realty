@@ -40,6 +40,14 @@ test("uses only published Property IDs from the site query", async () => {
   expect(result.source).toBe("site");
 });
 
+test("keeps the site agent name alongside a published property ID", async () => {
+  const result = await readSitePublishedIds({
+    query: async () => ({ rows: [{ id: "140832382", agentName: "Аянот Елена" }] }),
+  });
+
+  expect(result.rawEntities.get("140832382")).toEqual({ agentName: "Аянот Елена" });
+});
+
 test("does not silently join unequal source IDs", () => {
   expect(canonicalize("xml", " 140832382 ")).toEqual({
     source: "xml",

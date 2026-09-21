@@ -24,3 +24,17 @@ test("skips comparisons that require an unavailable source", () => {
   const result = evaluateSetDifferences({ xml: source("xml", ["1"]), api: null, site: source("site", ["1"]) });
   expect(result).toEqual([]);
 });
+
+test("keeps the responsible agent from a source when a discrepancy is recorded", () => {
+  const site = source("site", ["1"]);
+  site.rawEntities.set("1", { agentName: "Аянот Елена" });
+
+  const result = evaluateSetDifferences({ xml: source("xml", []), api: null, site });
+
+  expect(result).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      ruleCode: "site-not-in-xml",
+      evidence: expect.objectContaining({ agentName: "Аянот Елена" }),
+    }),
+  ]));
+});

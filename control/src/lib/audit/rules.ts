@@ -25,7 +25,7 @@ function difference(
     canonicalId,
     category: "exact",
     requiredSources: [left.source, right.source],
-    evidence: { presentIn: left.source, absentFrom: right.source },
+    evidence: { presentIn: left.source, absentFrom: right.source, ...left.rawEntities.get(canonicalId), ...right.rawEntities.get(canonicalId) },
   }));
 }
 
