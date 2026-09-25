@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export type SourceName = "xml" | "api" | "site";
+export type SourceName = "xml" | "api" | "api_all" | "site";
 
 export type SourceResult = {
   source: SourceName;

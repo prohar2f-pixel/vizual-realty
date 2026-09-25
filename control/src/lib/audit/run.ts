@@ -3,23 +3,28 @@ import type { Prisma } from "../../generated/prisma/client";
 
 import { readControlConfig } from "../config";
 import { getDb } from "../db";
-import { readTopnlabApi } from "../sources/topnlab-api";
+import { readTopnlabInventory } from "../sources/topnlab-api";
 import { readSitePublishedIds } from "../sources/site-db";
 import { readXmlFeed } from "../sources/xml-feed";
 import type { SourceName, SourceResult } from "../sources/types";
-import { evaluateSetDifferences } from "./rules";
+import { evaluateSetDifferences, requiredSourcesForRule } from "./rules";
 
-const RULE_VERSION = "2026-09-20";
+const RULE_VERSION = "2026-09-25-inventory-quality-v1";
 
-type SourceAttempt = { result: SourceResult | null; errorCode: string | null };
+type Attempt<T> = { result: T | null; errorCode: string | null };
+type SourceAttempt = Attempt<SourceResult>;
 export class AuditAlreadyRunningError extends Error { constructor() { super("AUDIT_ALREADY_RUNNING"); } }
+
+export function attachApiDiagnostics(api: SourceResult, diagnostics: SourceResult): SourceResult {
+  return { ...api, rawEntities: new Map([...api.rawEntities, ...diagnostics.rawEntities]) };
+}
 
 function errorCode(error: unknown): string {
   const value = error instanceof Error ? error.message : "SOURCE_UNKNOWN";
   return /^[A-Z0-9_]{3,80}$/.test(value) ? value : "SOURCE_UNAVAILABLE";
 }
 
-async function attempt(read: () => Promise<SourceResult>): Promise<SourceAttempt> {
+async function attempt<T>(read: () => Promise<T>): Promise<Attempt<T>> {
   try { return { result: await read(), errorCode: null }; }
   catch (error) { return { result: null, errorCode: errorCode(error) }; }
 }
@@ -42,15 +47,21 @@ export async function runAudit(trigger: "manual" | "scheduled") {
   const startedAt = new Date();
   const sitePool = new Pool({ connectionString: config.siteReadonlyDatabaseUrl });
   try {
-    const [xml, api, site] = await Promise.all([
+    const [xml, inventory, site] = await Promise.all([
       attempt(() => readXmlFeed({ feedUrl: config.topnlabFeedUrl })),
-      attempt(() => readTopnlabApi({ apiBaseUrl: config.topnlabBaseUrl, apiKey: config.topnlabKey })),
+      attempt(() => readTopnlabInventory({ apiBaseUrl: config.topnlabBaseUrl, apiKey: config.topnlabKey })),
       attempt(() => readSitePublishedIds(sitePool)),
     ]);
+    const apiAll: SourceAttempt = inventory.result
+      ? { result: inventory.result.all, errorCode: null }
+      : { result: null, errorCode: inventory.errorCode };
+    const api: SourceAttempt = inventory.result
+      ? { result: attachApiDiagnostics(inventory.result.advertised, inventory.result.all), errorCode: null }
+      : { result: null, errorCode: inventory.errorCode };
     const finishedAt = new Date();
-    const successful = [xml, api, site].filter((item) => item.result).length;
+    const successful = [xml, inventory, site].filter((item) => item.result).length;
     const status = successful === 3 ? "success" : successful === 0 ? "failed" : "partial";
-    const candidates = evaluateSetDifferences({ xml: xml.result, api: api.result, site: site.result });
+    const candidates = evaluateSetDifferences({ xml: xml.result, api: api.result, apiAll: apiAll.result, site: site.result });
 
     return db.$transaction(async (transaction) => {
       const auditRun = await transaction.auditRun.create({
@@ -58,6 +69,7 @@ export async function runAudit(trigger: "manual" | "scheduled") {
           trigger, status, ruleVersion: RULE_VERSION, startedAt, finishedAt,
           snapshots: { create: [
             snapshotData("xml", xml, startedAt, finishedAt),
+            snapshotData("api_all", apiAll, startedAt, finishedAt),
             snapshotData("api", api, startedAt, finishedAt),
             snapshotData("site", site, startedAt, finishedAt),
           ] },
@@ -75,15 +87,12 @@ export async function runAudit(trigger: "manual" | "scheduled") {
         });
       }
       // A difference disappears only after both sources required by its rule completed successfully.
-      const successfulSources = new Set([xml, api, site].flatMap((attempt) => attempt.result ? [attempt.result.source] : []));
+      const successfulSources = new Set([xml, apiAll, api, site].flatMap((sourceAttempt) => sourceAttempt.result ? [sourceAttempt.result.source] : []));
       const activeIssues = await transaction.auditIssue.findMany({ where: { status: { in: ["open", "review", "stale"] } } });
       for (const issue of activeIssues) {
         if (seenIssueKeys.has(`${issue.ruleCode}:${issue.canonicalId}`)) continue;
-        const required: Record<string, SourceName[]> = {
-          "xml-not-in-site": ["xml", "site"], "site-not-in-xml": ["site", "xml"],
-          "api-not-in-xml": ["api", "xml"], "xml-not-in-api": ["xml", "api"],
-        };
-        if (!required[issue.ruleCode]?.every((source) => successfulSources.has(source))) continue;
+        const required = requiredSourcesForRule(issue.ruleCode);
+        if (required.length === 0 || !required.every((source) => successfulSources.has(source))) continue;
         await transaction.auditIssue.update({ where: { id: issue.id }, data: { status: "resolved", lastSeenAt: finishedAt } });
         await transaction.auditIssueObservation.create({ data: { auditRunId: auditRun.id, auditIssueId: issue.id, state: "not_seen", ruleVersion: RULE_VERSION, evidence: { resolvedBy: "complete-source-read" } } });
       }
