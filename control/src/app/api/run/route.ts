@@ -1,0 +1,4 @@
+import { AuditAlreadyRunningError, runLockedAudit } from "../../../lib/audit/run";
+import { assertTrustedOrigin, getSession, RequestDeniedError } from "../../../lib/security/request";
+export const dynamic = "force-dynamic";
+export async function POST(request: Request) { try { assertTrustedOrigin(request); const session = await getSession(); if (!session) return Response.json({ ok: false, error: "Требуется вход" }, { status: 401 }); const result = await runLockedAudit("manual"); return Response.json({ ok: true, result }, { headers: { "Cache-Control": "no-store" } }); } catch (error) { const status = error instanceof RequestDeniedError ? 403 : error instanceof AuditAlreadyRunningError ? 409 : 500; return Response.json({ ok: false, error: error instanceof RequestDeniedError ? "Запрос отклонён" : error instanceof AuditAlreadyRunningError ? "Проверка уже выполняется" : "Проверка завершилась ошибкой" }, { status }); } }

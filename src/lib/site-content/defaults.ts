@@ -35,7 +35,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
     whyIntroduction:
       "Мы поможем купить или продать недвижимость с заботой и вниманием к деталям. Каждый объект проверен юристами, а сопроводит вашу сделку опытный агент.",
     benefits: [
-      { title: "Большой каталог", description: "более 200 проверенных объектов" },
+      { title: "Большой каталог", description: "более 300 проверенных объектов" },
       {
         title: "Опытный агент",
         description: "на каждом этапе сделки, полное сопровождение",
@@ -48,7 +48,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
     ],
     aboutCta: "Подробнее о компании",
     statisticLabel: "агентство недвижимости",
-    statisticValue: "200+",
+    statisticValue: "300+",
     statisticDescription: "активных объектов в продаже",
   },
   about: {
@@ -68,10 +68,10 @@ export const DEFAULT_SITE_CONTENT: SiteContentV1 = {
       "Снос ветхих зданий в Донецке и Мариуполе",
     ],
     closingText:
-      "В нашем каталоге более 200 объектов, за каждым закреплён личный агент, звоните.",
+      "В нашем каталоге более 300 объектов, за каждым закреплён личный агент, звоните.",
     statistics: [
       { value: "№ 1", label: "в рейтинге Домклик на Юге России" },
-      { value: "200+", label: "объектов в каталоге" },
+      { value: "300+", label: "объектов в каталоге" },
     ],
     teamCta: "КОМАНДА",
     teamCtaText:

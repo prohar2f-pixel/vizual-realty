@@ -36,11 +36,12 @@ test("renders the approved Why Vizual introduction and benefits", async () => {
     "Мы поможем купить или продать недвижимость с заботой и вниманием к деталям. Каждый объект проверен юристами, а сопроводит вашу сделку опытный агент.",
   );
   expect(html).toContain("Большой каталог");
-  expect(html).toContain("более 200 проверенных объектов");
+  expect(html).toContain("более 300 проверенных объектов");
+  expect(html).toContain("300+");
   expect(html).toContain("Опытный агент");
   expect(html).toContain("на каждом этапе сделки, полное сопровождение");
   expect(html).toContain("Открытие ипотеки бесплатно");
   expect(html).toContain("Сопровождение сделки под ключ");
   expect(html).toContain("от звонка до получения ключей");
-  expect(html).not.toContain("Более 200 проверенных квартир и домов");
+  expect(html).not.toContain("более 200 проверенных объектов");
 });

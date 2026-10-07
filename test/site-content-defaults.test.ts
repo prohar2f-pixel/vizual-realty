@@ -8,7 +8,7 @@ test("provides a safe Russian fallback snapshot for all editable site content", 
   expect(DEFAULT_SITE_CONTENT.footer.sectionsTitle).toBe("Разделы");
   expect(DEFAULT_SITE_CONTENT.about.statistics).toEqual([
     { value: "№ 1", label: "в рейтинге Домклик на Юге России" },
-    { value: "200+", label: "объектов в каталоге" },
+    { value: "300+", label: "объектов в каталоге" },
   ]);
   expect(DEFAULT_SITE_CONTENT.contacts).toMatchObject({
     introduction: "",

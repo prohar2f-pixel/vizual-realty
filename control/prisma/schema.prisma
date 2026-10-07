@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RunStatus {
+  success
+  partial
+  failed
+}
+
+enum SnapshotStatus {
+  success
+  partial
+  failed
+  skipped
+}
+
+enum IssueStatus {
+  open
+  review
+  ignored
+  resolved
+  stale
+}
+
+enum ObservationState {
+  seen
+  not_seen
+  skipped
+}
+
+model AuditRun {
+  id          String                  @id @default(cuid())
+  trigger     String
+  status      RunStatus
+  ruleVersion String
+  startedAt   DateTime
+  finishedAt  DateTime?
+  snapshots   SourceSnapshot[]
+  observations AuditIssueObservation[]
+}
+
+model SourceSnapshot {
+  id             String         @id @default(cuid())
+  auditRunId     String
+  source         String
+  status         SnapshotStatus
+  readStartedAt  DateTime
+  readFinishedAt DateTime
+  recordCount    Int?
+  idsSha256      String?
+  errorCode      String?
+  auditRun       AuditRun       @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+
+  @@unique([auditRunId, source])
+}
+
+model ObjectMapping {
+  id             String   @id @default(cuid())
+  source         String
+  rawId          String
+  canonicalId    String
+  mappingVersion String
+  createdAt      DateTime @default(now())
+
+  @@unique([source, rawId, mappingVersion])
+}
+
+model AuditIssue {
+  id          String       @id @default(cuid())
+  ruleCode    String
+  canonicalId String
+  category    String
+  status      IssueStatus  @default(open)
+  firstSeenAt DateTime     @default(now())
+  lastSeenAt  DateTime     @default(now())
+  observations AuditIssueObservation[]
+
+  @@unique([ruleCode, canonicalId])
+}
+
+model AuditIssueObservation {
+  id           String           @id @default(cuid())
+  auditRunId   String
+  auditIssueId String
+  state        ObservationState
+  ruleVersion  String
+  evidence     Json
+  auditRun     AuditRun         @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  auditIssue   AuditIssue       @relation(fields: [auditIssueId], references: [id], onDelete: Cascade)
+
+  @@unique([auditRunId, auditIssueId])
+}
+
+model AuditAction {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  comment   String?
+  createdAt DateTime @default(now())
+}
