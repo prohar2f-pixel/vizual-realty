@@ -69,6 +69,41 @@ test("filters issue rows by responsible employee and issue group", () => {
   ]);
 });
 
+test("filters issue rows by the exact selected responsible employee", () => {
+  expect(filterIssues([
+    { canonicalId: "1", ruleCode: "missing-floor", agentName: "Юлия Банитюк" },
+    { canonicalId: "2", ruleCode: "missing-floor", agentName: "Юлия Федоровская" },
+    { canonicalId: "3", ruleCode: "missing-floor", agentName: null },
+  ], { query: "", ruleCode: "", agentName: "Юлия Банитюк" })).toEqual([
+    { canonicalId: "1", ruleCode: "missing-floor", agentName: "Юлия Банитюк" },
+  ]);
+});
+
+test("filters issue rows whose responsible employee is not available", () => {
+  expect(filterIssues([
+    { canonicalId: "1", ruleCode: "missing-floor", agentName: "Юлия Банитюк" },
+    { canonicalId: "2", ruleCode: "missing-agent", agentName: null },
+  ], { query: "", ruleCode: "", agentName: "__unassigned__" })).toEqual([
+    { canonicalId: "2", ruleCode: "missing-agent", agentName: null },
+  ]);
+});
+
+test("filters issue rows by normalized property type", () => {
+  const issues = [
+    { canonicalId: "flat", ruleCode: "missing-district", realtyType: "flat" },
+    { canonicalId: "apartment", ruleCode: "missing-district", realtyType: "apartment" },
+    { canonicalId: "house", ruleCode: "missing-district", realtyType: "house" },
+    { canonicalId: "cottage", ruleCode: "missing-district", realtyType: "cottage" },
+    { canonicalId: "land", ruleCode: "missing-district", realtyType: "land" },
+    { canonicalId: "unknown", ruleCode: "missing-district", realtyType: null },
+  ];
+
+  expect(filterIssues(issues, { query: "", ruleCode: "", propertyType: "house" }).map((issue) => issue.canonicalId)).toEqual(["house", "cottage"]);
+  expect(filterIssues(issues, { query: "", ruleCode: "", propertyType: "land" }).map((issue) => issue.canonicalId)).toEqual(["land"]);
+  expect(filterIssues(issues, { query: "", ruleCode: "", propertyType: "flat" }).map((issue) => issue.canonicalId)).toEqual(["flat", "apartment"]);
+  expect(filterIssues(issues, { query: "", ruleCode: "", propertyType: "other" }).map((issue) => issue.canonicalId)).toEqual(["unknown"]);
+});
+
 test("filters every in-ad API-to-XML mismatch for Topnlab support", () => {
   expect(filterIssues([
     { canonicalId: "138189643", ruleCode: "api-not-in-xml", evidence: {} },

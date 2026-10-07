@@ -68,7 +68,19 @@ export function summarizeSnapshots(snapshots: DashboardSnapshot[]) {
   };
 }
 
-export type IssueListItem = { canonicalId: string; ruleCode: string; agentName?: string | null; evidence?: Record<string, unknown> };
+export type IssueListItem = { canonicalId: string; ruleCode: string; agentName?: string | null; realtyType?: string | null; evidence?: Record<string, unknown> };
+
+export const UNASSIGNED_AGENT_FILTER = "__unassigned__";
+export type PropertyTypeFilter = "flat" | "house" | "land" | "other";
+
+function propertyTypeGroup(value: string | null | undefined): PropertyTypeFilter {
+  const type = value?.trim().toLocaleLowerCase("ru").replaceAll("ё", "е");
+  if (!type) return "other";
+  if (["flat", "apartment", "room", "квартира", "комната", "апартаменты"].includes(type)) return "flat";
+  if (["house", "cottage", "townhouse", "дом", "коттедж", "таунхаус", "дача"].includes(type)) return "house";
+  if (["land", "plot", "lot", "участок", "земельный участок"].includes(type)) return "land";
+  return "other";
+}
 
 const qualityRuleCodes = new Set(["missing-price", "missing-photos", "missing-city", "missing-agent", "missing-area", "missing-rooms", "missing-floor", "missing-floors", "invalid-floor-range", "missing-land-area", "missing-district", "missing-address", "missing-description"]);
 
@@ -83,12 +95,14 @@ export function needsTopnlabSupport(issue: IssueListItem): boolean {
   return issue.ruleCode === "api-not-in-xml" || issue.ruleCode === "xml-not-in-api";
 }
 
-export function filterIssues<T extends IssueListItem>(issues: T[], filters: { query: string; ruleCode: string; group?: string; supportOnly?: boolean }): T[] {
+export function filterIssues<T extends IssueListItem>(issues: T[], filters: { query: string; ruleCode: string; group?: string; agentName?: string; propertyType?: string; supportOnly?: boolean }): T[] {
   const query = filters.query.trim().toLocaleLowerCase("ru");
   return issues.filter((issue) =>
     (!query || issue.canonicalId.includes(query) || issue.agentName?.toLocaleLowerCase("ru").includes(query)) &&
     (!filters.ruleCode || issue.ruleCode === filters.ruleCode) &&
     (!filters.group || issueGroup(issue.ruleCode) === filters.group) &&
+    (!filters.agentName || (filters.agentName === UNASSIGNED_AGENT_FILTER ? !issue.agentName?.trim() : issue.agentName?.trim() === filters.agentName)) &&
+    (!filters.propertyType || propertyTypeGroup(issue.realtyType) === filters.propertyType) &&
     (!filters.supportOnly || needsTopnlabSupport(issue)),
   );
 }

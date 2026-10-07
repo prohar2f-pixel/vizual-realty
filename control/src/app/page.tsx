@@ -48,7 +48,8 @@ export default async function Dashboard() {
     {issues.length === 0 ? <p>Открытых проблем нет.</p> : <IssuesTable issues={issues.map((issue) => {
       const evidence = issue.observations[0]?.evidence;
       const agentName = evidence && typeof evidence === "object" && !Array.isArray(evidence) && typeof evidence.agentName === "string" ? evidence.agentName : null;
-      return { ...issue, agentName, lastSeenAt: issue.lastSeenAt.toISOString() };
+      const realtyType = evidence && typeof evidence === "object" && !Array.isArray(evidence) && typeof evidence.realtyType === "string" ? evidence.realtyType : null;
+      return { ...issue, agentName, realtyType, lastSeenAt: issue.lastSeenAt.toISOString() };
     })} />}
   </main>;
 }
